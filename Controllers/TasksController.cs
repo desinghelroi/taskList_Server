@@ -1,8 +1,11 @@
 ﻿using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.Threading.Tasks;
 using TaskList_Server.Data;
+using TaskList_Server.Models;
 using TaskList_Server.Models.DTOs;
+using System.IO;
 
 namespace TaskList_Server.Controllers
 {
@@ -58,7 +61,7 @@ namespace TaskList_Server.Controllers
                                 AppId = a.IntId
                             };
 
-                var totalRecords = await query.Where(s=>s.StatusName != "Deleted" && s.StatusName != "Uploaded" && s.StatusName != "Approved" && s.StatusName != "Completed" && s.Visible).OrderByDescending(s=>s.RegistrationDate).ToListAsync();
+                var totalRecords = await query.Where(s=>s.StatusName != "Deleted" && s.StatusName != "Uploaded" && s.StatusName != "Approved" && s.StatusName != "Completed" && s.Visible).OrderByDescending(s=>s.TaskId).ToListAsync();
 
                 //var tasks = await query
                 //    .Skip((page - 1) * pageSize)
@@ -86,47 +89,92 @@ namespace TaskList_Server.Controllers
         {
             try
             {
-                var query = from t in _context.Tasks.AsNoTracking()
-                            join c in _context.TblCustomers on t.CustomerId equals c.IntId into cust
-                            from c in cust.DefaultIfEmpty()
-                            join s in _context.Statuses on t.StatusId equals s.StatusId into stat
-                            from s in stat.DefaultIfEmpty()
-                            join p in _context.Priorities on t.PriorityId equals p.PriorityId into pri
-                            from p in pri.DefaultIfEmpty()
-                            join a in _context.TblApplications on t.ApplicationId equals a.IntId into app
-                            from a in app.DefaultIfEmpty()
-                            join u in _context.Users on t.UserId equals u.UserId into user
-                            from us in user.DefaultIfEmpty()
-                            orderby t.TaskId descending
-                            select new TaskDto
+                var task = await (from t in _context.Tasks.AsNoTracking()
+                                  join c in _context.TblCustomers on t.CustomerId equals c.IntId into cust
+                                  from c in cust.DefaultIfEmpty()
+                                  join s in _context.Statuses on t.StatusId equals s.StatusId into stat
+                                  from s in stat.DefaultIfEmpty()
+                                  join p in _context.Priorities on t.PriorityId equals p.PriorityId into pri
+                                  from p in pri.DefaultIfEmpty()
+                                  join a in _context.TblApplications on t.ApplicationId equals a.IntId into app
+                                  from a in app.DefaultIfEmpty()
+                                  join u in _context.Users on t.UserId equals u.UserId into user
+                                  from us in user.DefaultIfEmpty()
+                                  where t.TaskId == id
+                                  select new TaskDto
+                                  {
+                                      TaskId = t.TaskId,
+                                      IntDisplayNo = t.IntDisplayNo ?? 0,
+                                      UserId = t.UserId ?? 0,
+                                      UserName = us.FirstName,
+                                      RegistrationDate = t.RegistrationDate ?? DateTime.Now,
+                                      LastChangeDate = t.LastChangeDate,
+                                      DelegatedTo = "",
+                                      Description = t.Description,
+                                      Visible = t.Visible ?? false,
+                                      SeriousBug = t.SeriousBug ?? false,
+                                      SmallBug = t.SmallBug ?? false,
+                                      CustomerId = c.IntId,
+                                      CustomerName = c.ChrCustomerName,
+                                      CustomerCode = c.ChrCustomerCode,
+                                      StatusId = s.StatusId,
+                                      StatusName = s.Name,
+                                      PriorityId = p.PriorityId,
+                                      PriorityName = p.Name,
+                                      ApplicationName = a.ChrApplicationName ?? "",
+                                      AppId = a.IntId
+                                  }).FirstOrDefaultAsync();
+
+
+                if (task != null)
+                {
+                    var uploadsFolder = Path.Combine(AppContext.BaseDirectory, "Uploads"); 
+
+                    var files = _context.TblUploadedFiles
+                        .Where(f => f.IntTaskId == id)
+                        .AsEnumerable() 
+                        .Select(f =>
+                        {
+                            var filePath = Path.Combine(uploadsFolder, f.ChrSavedFileName);
+                            string base64 = null;
+
+                            try
                             {
-                                TaskId = t.TaskId,
-                                IntDisplayNo = t.IntDisplayNo ?? 0,
-                                UserId = t.UserId ?? 0,
-                                UserName = us.FirstName,
-                                RegistrationDate = t.RegistrationDate ?? DateTime.Now,
-                                LastChangeDate = t.LastChangeDate,
-                                DelegatedTo = "",
-                                Description = t.Description,
-                                Visible = t.Visible ?? false,
-                                SeriousBug = t.SeriousBug ?? false,
-                                SmallBug = t.SmallBug ?? false,
-                                CustomerId = c.IntId,
-                                CustomerName = c.ChrCustomerName,
-                                CustomerCode = c.ChrCustomerCode,
-                                StatusId = s.StatusId,
-                                StatusName = s.Name,
-                                PriorityId = p.PriorityId,
-                                PriorityName = p.Name,
-                                ApplicationName = a.ChrApplicationName ?? "",
-                                AppId = a.IntId, 
+                                if (System.IO.File.Exists(filePath))
+                                {
+                                    var bytes = System.IO.File.ReadAllBytes(filePath);
+                                    var ext = Path.GetExtension(f.ChrSavedFileName).ToLower();
+                                    var mimeType = ext switch
+                                    {
+                                        ".jpg" or ".jpeg" => "image/jpeg",
+                                        ".png" => "image/png",
+                                        ".gif" => "image/gif",
+                                        ".bmp" => "image/bmp",
+                                        ".pdf" => "application/pdf",
+                                        _ => "application/octet-stream"
+                                    };
+                                    base64 = $"data:{mimeType};base64,{Convert.ToBase64String(bytes)}";
+                                }
+                            }
+                            catch
+                            {
+                                base64 = null;
+                            }
 
+                            return new TaskFileDto
+                            {
+                                FileName = f.ChrOriginalFileName,
+                                FileUrl = base64
                             };
+                        })
+                        .ToList();
 
-                var totalRecords = await query.Where(s =>s.TaskId == id).FirstOrDefaultAsync();
+                    task.Files = files;
+                }
 
 
-                return Ok(totalRecords);
+
+                return Ok(task);
             }
             catch (Exception ex)
             {
@@ -135,71 +183,142 @@ namespace TaskList_Server.Controllers
         }
 
         [HttpPost]
+        [Consumes("multipart/form-data")]
         public async Task<IActionResult> Create([FromForm] CreateTaskDto dto)
         {
-            var task = new TaskList_Server.Models.Task
+            using var transaction = await _context.Database.BeginTransactionAsync();
+
+            try
             {
-                Description = dto.Description,
-                SeriousBug = dto.SeriousBug,
-                SmallBug = dto.MinorBug,
-                Visible = dto.Visible == "Yes",
-                RegistrationDate = DateTime.Now,
-                LastChangeDate = DateTime.Now,
-            };
+                int lastNumber = _context.Tasks
+                    .OrderByDescending(t => t.IntDisplayNo)
+                    .Select(t => t.IntDisplayNo)
+                    .FirstOrDefault() ?? 1;
 
-            _context.Tasks.Add(task);
-            await _context.SaveChangesAsync();
+                var task = new TaskList_Server.Models.Task
+                {
+                    Description = dto.Description,
+                    SeriousBug = dto.SeriousBug,
+                    SmallBug = dto.SmallBug,
+                    Visible = dto.Visible,
+                    RegistrationDate = DateTime.Now,
+                    LastChangeDate = DateTime.Now,
+                    UserId = dto.UserId,
+                    DelegatedTo = dto.UserId,
+                    CustomerId = 1,
+                    PriorityId = dto.PriorityId,
+                    ApplicationId = dto.AppId,
+                    StatusId = dto.StatusId,
+                    IntDisplayNo = lastNumber + 1
+                };
 
-            //// Handle optional file upload
-            //if (dto.File != null)
-            //{
-            //    var uploads = Path.Combine(Directory.GetCurrentDirectory(), "Uploads");
-            //    if (!Directory.Exists(uploads))
-            //        Directory.CreateDirectory(uploads);
+                _context.Tasks.Add(task);
+                await _context.SaveChangesAsync(); 
 
-            //    var filePath = Path.Combine(uploads, dto.File.FileName);
-            //    using (var stream = new FileStream(filePath, FileMode.Create))
-            //    {
-            //        await dto.File.CopyToAsync(stream);
-            //    }
-            //}
+                if (dto.File != null && dto.File.Length > 0)
+                {
+                    var uploadsFolder = Path.Combine(Directory.GetCurrentDirectory(), "Uploads");
+                    if (!Directory.Exists(uploadsFolder))
+                    {
+                        Directory.CreateDirectory(uploadsFolder);
+                    }
 
-            return Ok(new { message = "Task created successfully" });
+                    var uniqueFileName = $"{Guid.NewGuid()}_{Path.GetFileName(dto.File.FileName)}";
+                    var filePath = Path.Combine(uploadsFolder, uniqueFileName);
+
+                    using (var stream = new FileStream(filePath, FileMode.Create))
+                    {
+                        await dto.File.CopyToAsync(stream);
+                    }
+
+                    var fileUpload = new TblUploadedFile
+                    {
+                        ChrOriginalFileName = dto.File.FileName,
+                        ChrSavedFileName = uniqueFileName, 
+                        IntTaskId = task.TaskId
+                    };
+
+                    _context.TblUploadedFiles.Add(fileUpload);
+                    await _context.SaveChangesAsync();
+                }
+
+                await transaction.CommitAsync();
+
+                return Ok(new { message = "Task created successfully", taskId = task.TaskId });
+            }
+            catch (Exception ex)
+            {
+                await transaction.RollbackAsync();
+                return StatusCode(500, new { message = "Error creating task", error = ex.Message });
+            }
         }
 
+
+
         [HttpPut("{id}")]
-        public async Task<IActionResult> UpdateTask(int id, [FromBody] TaskDto taskDto)
+        [Consumes("multipart/form-data")]
+        public async Task<IActionResult> UpdateTask(int id, [FromForm] TaskDto taskDto)
         {
             if (id != taskDto.TaskId)
                 return BadRequest("Task ID mismatch");
 
-            var existingTask = await _context.Tasks.FindAsync(id);
-            if (existingTask == null)
-                return NotFound();
-
-            existingTask.Description = taskDto.Description;
-            existingTask.StatusId = taskDto.StatusId;
-            existingTask.PriorityId = taskDto.PriorityId;
-            existingTask.UserId = taskDto.UserId;
-            existingTask.Visible = taskDto.Visible;
-            existingTask.SeriousBug = taskDto.SeriousBug;
-            existingTask.SmallBug = taskDto.SmallBug;
-            existingTask.Description = taskDto.Description;
-            existingTask.LastChangeDate = DateTime.UtcNow;
+            using var transaction = await _context.Database.BeginTransactionAsync();
 
             try
             {
-                await _context.SaveChangesAsync();
-            }
-            catch (DbUpdateConcurrencyException)
-            {
-                if (!TaskExists(id))
+                var existingTask = await _context.Tasks.FindAsync(id);
+                if (existingTask == null)
                     return NotFound();
-                else
-                    throw;
+
+                existingTask.Description = taskDto.Description;
+                existingTask.StatusId = taskDto.StatusId;
+                existingTask.ApplicationId = taskDto.AppId;
+                existingTask.PriorityId = taskDto.PriorityId;
+                existingTask.UserId = taskDto.UserId;
+                existingTask.Visible = taskDto.Visible;
+                existingTask.SeriousBug = taskDto.SeriousBug;
+                existingTask.SmallBug = taskDto.SmallBug;
+                existingTask.LastChangeDate = DateTime.UtcNow;
+
+                await _context.SaveChangesAsync();
+
+                if (taskDto.File != null && taskDto.File.Length > 0)
+                {
+                    var uploadsFolder = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "Uploads");
+                    if (!Directory.Exists(uploadsFolder))
+                    {
+                        Directory.CreateDirectory(uploadsFolder);
+                    }
+
+                    var uniqueFileName = $"{Guid.NewGuid()}_{Path.GetFileName(taskDto.File.FileName)}";
+                    var filePath = Path.Combine(uploadsFolder, uniqueFileName);
+
+                    using (var stream = new FileStream(filePath, FileMode.Create))
+                    {
+                        await taskDto.File.CopyToAsync(stream);
+                    }
+
+                    var fileUpload = new TblUploadedFile
+                    {
+                        ChrOriginalFileName = taskDto.File.FileName,
+                        ChrSavedFileName = uniqueFileName,
+                        IntTaskId = existingTask.TaskId
+                    };
+
+                    _context.TblUploadedFiles.Add(fileUpload);
+                    await _context.SaveChangesAsync();
+                }
+
+                await transaction.CommitAsync();
+                return Ok(new { message = "Task updated successfully" });
             }
-            return NoContent();
+            catch (Exception ex)
+            {
+                await transaction.RollbackAsync();
+                return StatusCode(500, new { message = "Error updating task", error = ex.Message });
+            }
         }
+
 
 
 
@@ -226,6 +345,50 @@ namespace TaskList_Server.Controllers
                 .ToListAsync();
 
             return Ok(statuses);
+        }
+
+
+        [HttpGet("application")]
+        public async Task<ActionResult<IEnumerable<ProjectsDto>>> GetProjectList()
+        {
+            var projects = await _context.TblApplications
+                .Select(s => new ProjectsDto
+                {
+                    AppId = s.IntId,
+                    ApplicationName = s.ChrApplicationName
+                })
+                .ToListAsync();
+
+            return Ok(projects);
+        }
+
+        [HttpGet("priority")]
+        public async Task<ActionResult<IEnumerable<PriorityDto>>> GetPriorityList()
+        {
+            var priority = await _context.Priorities
+                .Select(s => new PriorityDto
+                {
+                    PriorityId = s.PriorityId,
+                    PriorityName = s.Name
+                })
+                .ToListAsync();
+
+            return Ok(priority);
+        }
+
+        [HttpGet("get_developers")]
+        public async Task<ActionResult<IEnumerable<DeveloperDto>>> GetDeveloper()
+        {
+            var developer = await _context.Users
+                .Where(s=>s.BitShowUser == true)
+                .Select(s => new DeveloperDto
+                {
+                    UserId = s.UserId,
+                    UserName = s.FirstName
+                })
+                .ToListAsync();
+
+            return Ok(developer);
         }
 
 

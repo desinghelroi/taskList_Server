@@ -26,5 +26,14 @@
 
         public string ApplicationName { get; set; }
         public int AppId { get; set; }
+        public IFormFile? File { get; set; }
+        public List<TaskFileDto> Files { get; set; } = new();
+
+    }
+
+    public class TaskFileDto
+    {
+        public string FileName { get; set; } = "";
+        public string FileUrl { get; set; } = "";
     }
 }

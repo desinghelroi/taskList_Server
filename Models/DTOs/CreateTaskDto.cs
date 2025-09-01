@@ -2,14 +2,14 @@
 {
     public class CreateTaskDto
     {
-        public string Project { get; set; }
-        public string AssignedTo { get; set; }
-        public string Status { get; set; }
-        public string Priority { get; set; }
+        public int AppId { get; set; }
+        public int UserId { get; set; }
+        public int StatusId { get; set; }
+        public int PriorityId { get; set; }
         public bool SeriousBug { get; set; }
-        public bool MinorBug { get; set; }
-        public string Visible { get; set; }
+        public bool SmallBug { get; set; }
+        public bool Visible { get; set; }
         public string Description { get; set; }
-        public IFormFile? File { get; set; }  // optional upload
+        public IFormFile? File { get; set; }
     }
 }
