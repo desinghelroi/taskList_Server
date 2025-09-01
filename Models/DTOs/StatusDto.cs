@@ -24,4 +24,16 @@
         public bool IsActive { get; set; }
     }
 
+    public class LoginRequest
+    {
+        public string UserName { get; set; }
+        public string Password { get; set; }
+        public string CustomerCode { get; set; }
+    }
+    public class permissionDto
+    {
+        public int permissionId { get; set; }
+        public string ChrPermission { get; set; }
+    }
+
 }

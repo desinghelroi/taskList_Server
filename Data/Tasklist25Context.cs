@@ -55,6 +55,9 @@ public partial class Tasklist25Context : DbContext
 
         modelBuilder.Entity<TblApplication>()
             .ToTable("tblApplication");
+
+        modelBuilder.Entity<TblPermission>()
+            .ToTable("tblPermission");
     }
 
     //    protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)

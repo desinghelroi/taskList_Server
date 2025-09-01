@@ -6,9 +6,13 @@ using TaskList_Server.Data;
 using TaskList_Server.Models;
 using TaskList_Server.Models.DTOs;
 using System.IO;
+using Microsoft.Data.SqlClient.DataClassification;
+using static Microsoft.EntityFrameworkCore.DbLoggerCategory;
+using Microsoft.AspNetCore.Authorization;
 
 namespace TaskList_Server.Controllers
 {
+    [Authorize]
     [Route("api/[controller]")]
     [ApiController]
     public class TasksController : ControllerBase
@@ -20,8 +24,8 @@ namespace TaskList_Server.Controllers
             _context = context;
         }
 
-        [HttpGet]       
-        public async Task<ActionResult<object>> GetTasks(int page = 1, int pageSize = 20)
+        [HttpGet]
+        public async Task<ActionResult<object>> GetTasks(int page = 1, int pageSize = 20, string filter = "true", string search = "")
         {
             try
             {
@@ -36,7 +40,6 @@ namespace TaskList_Server.Controllers
                             from a in app.DefaultIfEmpty()
                             join u in _context.Users on t.UserId equals u.UserId into user
                             from us in user.DefaultIfEmpty()
-                            orderby t.TaskId descending
                             select new TaskDto
                             {
                                 TaskId = t.TaskId,
@@ -61,27 +64,48 @@ namespace TaskList_Server.Controllers
                                 AppId = a.IntId
                             };
 
-                var totalRecords = await query.Where(s=>s.StatusName != "Deleted" && s.StatusName != "Uploaded" && s.StatusName != "Approved" && s.StatusName != "Completed" && s.Visible).OrderByDescending(s=>s.TaskId).ToListAsync();
+                // Apply filter
+                IQueryable<TaskDto> filteredQuery;
+                if (filter.Equals("true", StringComparison.OrdinalIgnoreCase))
+                    filteredQuery = query.Where(s => s.Visible == true && s.CustomerId == 1 && s.StatusId < 6);
+                else
+                    filteredQuery = query.Where(s => s.Visible == false && s.CustomerId == 1 && s.StatusId < 6);
 
-                //var tasks = await query
-                //    .Skip((page - 1) * pageSize)
-                //    .Take(pageSize)
-                //    .ToListAsync();
+                if (!string.IsNullOrEmpty(search))
+                    filteredQuery = filteredQuery.Where(s => s.Description.Contains(search));
 
-                //return Ok(new
-                //{
-                //    Data = tasks,
-                //    TotalRecords = totalRecords,
-                //    Page = page,
-                //    PageSize = pageSize
-                //});
-                return Ok(totalRecords);
+                var totalRecords = await filteredQuery.CountAsync();
+
+                var tasks = await filteredQuery
+                    .OrderByDescending(t => t.TaskId)
+                    .Skip((page - 1) * pageSize)
+                    .Take(pageSize)
+                    .ToListAsync();
+
+                if (!string.IsNullOrEmpty(search))
+                {
+                    tasks = tasks.Select(t =>
+                    {
+                        t.Description = t.Description.Replace(search, $"<span style='color:#E80F0F;'>{search}</span>");
+                        return t;
+                    }).ToList();
+                }
+
+                return Ok(new
+                {
+                    Data = tasks,
+                    TotalRecords = totalRecords,
+                    Page = page,
+                    PageSize = pageSize,
+                    TotalPages = (int)Math.Ceiling(totalRecords / (double)pageSize)
+                });
             }
             catch (Exception ex)
             {
                 return StatusCode(500, $"Internal server error: {ex.Message}");
-            }               
+            }
         }
+
 
 
         [HttpGet("{id}")]
@@ -390,6 +414,21 @@ namespace TaskList_Server.Controllers
 
             return Ok(developer);
         }
+
+        [HttpGet("get_taskCounts")]
+        public async Task<ActionResult<object>> GetCounts()
+        {
+            int GetCurrentTaskCount = await _context.Tasks
+                .Where(s => s.Visible == true && s.CustomerId == 1 && s.StatusId < 6)
+                .CountAsync();
+
+            int GetClosedTaskCount = await _context.Tasks
+                .Where(s => s.Visible == false && s.CustomerId == 1 && s.StatusId < 6)
+                .CountAsync();
+
+            return Ok(new { OpenTask = GetCurrentTaskCount, ClosedTask = GetClosedTaskCount });
+        }
+
 
 
         private bool TaskExists(int id) => _context.Tasks.Any(t => t.TaskId == id);

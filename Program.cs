@@ -1,108 +1,104 @@
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Metadata.Internal;
 using Microsoft.IdentityModel.Tokens;
+using Microsoft.OpenApi.Models;
 using System.Text;
 using TaskList_Server.Data;
-using TaskList_Server.Models.DTOs;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
+// Configure SQL Server DbContext
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
-builder.Services.AddDbContext<Tasklist25Context>(options => options.UseSqlServer(connectionString));
+builder.Services.AddDbContext<Tasklist25Context>(options =>
+    options.UseSqlServer(connectionString));
 
-
-#region JWT Authentication starts here
-
-//// Bind settings
-//builder.Services.Configure<JwtSettings>(builder.Configuration.GetSection("Jwt"));
-//var jwtSettings = builder.Configuration.GetSection("Jwt").Get<JwtSettings>();
-
-
-//// Add Authentication
-//builder.Services.AddAuthentication(options =>
-//{
-//    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
-//    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
-//})
-//.AddJwtBearer(options =>
-//{
-//    // Put validation details in TokenValidationParameters
-//    options.TokenValidationParameters = new TokenValidationParameters
-//    {
-//        ValidateIssuer = true,
-//        ValidIssuer = jwtSettings.Issuer,
-
-//        ValidateAudience = true,
-//        ValidAudience = jwtSettings.Audience,
-
-//        ValidateIssuerSigningKey = true,
-//        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSettings.Key)),
-
-//        ValidateLifetime = true,
-//        ClockSkew = TimeSpan.FromSeconds(30)
-//    };
-
-//    options.Events = new JwtBearerEvents
-//    {
-//        OnAuthenticationFailed = ctx =>
-//        {
-//            return Task.CompletedTask;
-//        }
-//    };
-//});
-
-//builder.Services.AddAuthorization(options =>
-//{
-//    options.AddPolicy("AdminOnly", policy => policy.RequireRole("Admin"));
-//});
-
-#endregion  JWT Authentication ends here
-
+// Add Controllers
 builder.Services.AddControllers();
-// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
-builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
 
+// JWT Authentication
+builder.Services.AddAuthentication(options =>
+{
+    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+})
+.AddJwtBearer(options =>
+{
+    options.TokenValidationParameters = new TokenValidationParameters
+    {
+        ValidateIssuer = true,
+        ValidateAudience = true,
+        ValidateLifetime = true,
+        ValidateIssuerSigningKey = true,
+        ValidIssuer = builder.Configuration["Jwt:Issuer"],
+        ValidAudience = builder.Configuration["Jwt:Audience"],
+        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"]))
+    };
+});
 
-//builder.Services.AddCors(options =>
-//{
-//    options.AddDefaultPolicy(policy =>
-//    {
-//        policy.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod();
-//    });
-//});
+// Authorization
+builder.Services.AddAuthorization();
 
-
+// CORS for React App
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("AllowReactApp",
-        policy =>
+    options.AddPolicy("AllowReactApp", policy =>
+    {
+        policy.WithOrigins("http://localhost:3000")
+              .AllowAnyMethod()
+              .AllowAnyHeader();
+    });
+});
+
+// Swagger / OpenAPI
+builder.Services.AddSwaggerGen(c =>
+{
+    c.SwaggerDoc("v1", new OpenApiInfo
+    {
+        Title = "Tasklist API",
+        Version = "v1",
+        Description = "API for task management with JWT authentication"
+    });
+
+    // JWT Bearer support in Swagger
+    c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+    {
+        Name = "Authorization",
+        Type = SecuritySchemeType.ApiKey,
+        Scheme = "Bearer",
+        In = ParameterLocation.Header,
+        Description = "Enter 'Bearer {token}'"
+    });
+
+    c.AddSecurityRequirement(new OpenApiSecurityRequirement
+    {
         {
-            policy.WithOrigins("http://localhost:3000") 
-                  .AllowAnyMethod()
-                  .AllowAnyHeader();
-        });
+            new OpenApiSecurityScheme
+            {
+                Reference = new OpenApiReference { Type = ReferenceType.SecurityScheme, Id = "Bearer" }
+            },
+            new string[] { }
+        }
+    });
 });
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment())
+// Enable Swagger
+app.UseSwagger(); // remove c.SerializeAsV2
+app.UseSwaggerUI(c =>
 {
-    app.UseSwagger();
-    app.UseSwaggerUI();
-}
+    c.SwaggerEndpoint("/swagger/v1/swagger.json", "Tasklist API v1");
+    c.RoutePrefix = string.Empty;
+});
 
-
-
+// Middleware pipeline
 app.UseHttpsRedirection();
 app.UseStaticFiles();
-app.UseAuthentication();
-app.UseAuthorization();
 
 app.UseCors("AllowReactApp");
+
+app.UseAuthentication(); // Must come before UseAuthorization
+app.UseAuthorization();
 
 app.MapControllers();
 
