@@ -9,6 +9,7 @@ using System.IO;
 using Microsoft.Data.SqlClient.DataClassification;
 using static Microsoft.EntityFrameworkCore.DbLoggerCategory;
 using Microsoft.AspNetCore.Authorization;
+using System;
 
 namespace TaskList_Server.Controllers
 {
@@ -25,10 +26,13 @@ namespace TaskList_Server.Controllers
         }
 
         [HttpGet]
-        public async Task<ActionResult<object>> GetTasks(int page = 1, int pageSize = 20, string filter = "true", string search = "")
+        public async Task<ActionResult<object>> GetTasks(int page = 1, int pageSize = 20, string filter = "true", string search = "", string staus = "")
         {
             try
             {
+                var customerId = User.FindFirst("customerId")?.Value;
+
+
                 var query = from t in _context.Tasks.AsNoTracking()
                             join c in _context.TblCustomers on t.CustomerId equals c.IntId into cust
                             from c in cust.DefaultIfEmpty()
@@ -45,17 +49,17 @@ namespace TaskList_Server.Controllers
                                 TaskId = t.TaskId,
                                 IntDisplayNo = t.IntDisplayNo ?? 0,
                                 UserId = t.UserId ?? 0,
-                                UserName = us.FirstName,
+                                UserName = us.FirstName ?? "",
                                 RegistrationDate = t.RegistrationDate ?? DateTime.Now,
                                 LastChangeDate = t.LastChangeDate,
                                 DelegatedTo = "",
-                                Description = t.Description,
+                                Description = t.Description ?? "",
                                 Visible = t.Visible ?? false,
                                 SeriousBug = t.SeriousBug ?? false,
                                 SmallBug = t.SmallBug ?? false,
                                 CustomerId = c.IntId,
-                                CustomerName = c.ChrCustomerName,
-                                CustomerCode = c.ChrCustomerCode,
+                                CustomerName = c.ChrCustomerName ?? "",
+                                CustomerCode = c.ChrCustomerCode ?? "",
                                 StatusId = s.StatusId,
                                 StatusName = s.Name,
                                 PriorityId = p.PriorityId,
@@ -67,12 +71,15 @@ namespace TaskList_Server.Controllers
                 // Apply filter
                 IQueryable<TaskDto> filteredQuery;
                 if (filter.Equals("true", StringComparison.OrdinalIgnoreCase))
-                    filteredQuery = query.Where(s => s.Visible == true && s.CustomerId == 1 && s.StatusId < 6);
+                    filteredQuery = query.Where(s => s.Visible == true && s.CustomerId == Convert.ToInt32(customerId) && s.StatusId < 6);
                 else
-                    filteredQuery = query.Where(s => s.Visible == false && s.CustomerId == 1 && s.StatusId < 6);
+                    filteredQuery = query.Where(s => s.Visible == false && s.CustomerId == Convert.ToInt32(customerId) && s.StatusId < 6);
 
                 if (!string.IsNullOrEmpty(search))
-                    filteredQuery = filteredQuery.Where(s => s.Description.Contains(search));
+                    filteredQuery = query.Where(s => s.Description.Contains(search));
+
+                if (!string.IsNullOrEmpty(staus))
+                    filteredQuery = query.Where(s => s.Visible == true && s.StatusName.Contains(staus));
 
                 var totalRecords = await filteredQuery.CountAsync();
 
@@ -130,17 +137,17 @@ namespace TaskList_Server.Controllers
                                       TaskId = t.TaskId,
                                       IntDisplayNo = t.IntDisplayNo ?? 0,
                                       UserId = t.UserId ?? 0,
-                                      UserName = us.FirstName,
+                                      UserName = us.FirstName ?? "",
                                       RegistrationDate = t.RegistrationDate ?? DateTime.Now,
                                       LastChangeDate = t.LastChangeDate,
                                       DelegatedTo = "",
-                                      Description = t.Description,
+                                      Description = t.Description ?? "",
                                       Visible = t.Visible ?? false,
                                       SeriousBug = t.SeriousBug ?? false,
                                       SmallBug = t.SmallBug ?? false,
                                       CustomerId = c.IntId,
-                                      CustomerName = c.ChrCustomerName,
-                                      CustomerCode = c.ChrCustomerCode,
+                                      CustomerName = c.ChrCustomerName ?? "",
+                                      CustomerCode = c.ChrCustomerCode ?? "",
                                       StatusId = s.StatusId,
                                       StatusName = s.Name,
                                       PriorityId = p.PriorityId,
@@ -152,52 +159,18 @@ namespace TaskList_Server.Controllers
 
                 if (task != null)
                 {
-                    var uploadsFolder = Path.Combine(AppContext.BaseDirectory, "Uploads"); 
-
                     var files = _context.TblUploadedFiles
                         .Where(f => f.IntTaskId == id)
-                        .AsEnumerable() 
-                        .Select(f =>
+                        .AsEnumerable()
+                        .Select(f => new TaskFileDto
                         {
-                            var filePath = Path.Combine(uploadsFolder, f.ChrSavedFileName);
-                            string base64 = null;
-
-                            try
-                            {
-                                if (System.IO.File.Exists(filePath))
-                                {
-                                    var bytes = System.IO.File.ReadAllBytes(filePath);
-                                    var ext = Path.GetExtension(f.ChrSavedFileName).ToLower();
-                                    var mimeType = ext switch
-                                    {
-                                        ".jpg" or ".jpeg" => "image/jpeg",
-                                        ".png" => "image/png",
-                                        ".gif" => "image/gif",
-                                        ".bmp" => "image/bmp",
-                                        ".pdf" => "application/pdf",
-                                        _ => "application/octet-stream"
-                                    };
-                                    base64 = $"data:{mimeType};base64,{Convert.ToBase64String(bytes)}";
-                                }
-                            }
-                            catch
-                            {
-                                base64 = null;
-                            }
-
-                            return new TaskFileDto
-                            {
-                                FileName = f.ChrOriginalFileName,
-                                FileUrl = base64
-                            };
+                            FileName = f.ChrOriginalFileName??"",
+                            UrlId = f.IntId
                         })
                         .ToList();
-
-                    task.Files = files;
+                    if (files is not null)
+                        task.Files = files;
                 }
-
-
-
                 return Ok(task);
             }
             catch (Exception ex)
@@ -237,7 +210,7 @@ namespace TaskList_Server.Controllers
                 };
 
                 _context.Tasks.Add(task);
-                await _context.SaveChangesAsync(); 
+                await _context.SaveChangesAsync();
 
                 if (dto.File != null && dto.File.Length > 0)
                 {
@@ -258,7 +231,7 @@ namespace TaskList_Server.Controllers
                     var fileUpload = new TblUploadedFile
                     {
                         ChrOriginalFileName = dto.File.FileName,
-                        ChrSavedFileName = uniqueFileName, 
+                        ChrSavedFileName = uniqueFileName,
                         IntTaskId = task.TaskId
                     };
 
@@ -308,7 +281,7 @@ namespace TaskList_Server.Controllers
 
                 if (taskDto.File != null && taskDto.File.Length > 0)
                 {
-                    var uploadsFolder = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "Uploads");
+                    var uploadsFolder = Path.Combine(Directory.GetCurrentDirectory(), "Uploads");
                     if (!Directory.Exists(uploadsFolder))
                     {
                         Directory.CreateDirectory(uploadsFolder);
@@ -344,8 +317,6 @@ namespace TaskList_Server.Controllers
         }
 
 
-
-
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteTask(int id)
         {
@@ -379,7 +350,7 @@ namespace TaskList_Server.Controllers
                 .Select(s => new ProjectsDto
                 {
                     AppId = s.IntId,
-                    ApplicationName = s.ChrApplicationName
+                    ApplicationName = s.ChrApplicationName??""
                 })
                 .ToListAsync();
 
@@ -404,11 +375,11 @@ namespace TaskList_Server.Controllers
         public async Task<ActionResult<IEnumerable<DeveloperDto>>> GetDeveloper()
         {
             var developer = await _context.Users
-                .Where(s=>s.BitShowUser == true)
+                .Where(s => s.BitShowUser == true)
                 .Select(s => new DeveloperDto
                 {
                     UserId = s.UserId,
-                    UserName = s.FirstName
+                    UserName = s.FirstName??""
                 })
                 .ToListAsync();
 
@@ -418,19 +389,97 @@ namespace TaskList_Server.Controllers
         [HttpGet("get_taskCounts")]
         public async Task<ActionResult<object>> GetCounts()
         {
+            var customerId = User.FindFirst("customerId")?.Value;
+
             int GetCurrentTaskCount = await _context.Tasks
-                .Where(s => s.Visible == true && s.CustomerId == 1 && s.StatusId < 6)
+                .Where(s => s.Visible == true && s.CustomerId == Convert.ToInt32(customerId) && s.StatusId < 6)
                 .CountAsync();
 
             int GetClosedTaskCount = await _context.Tasks
-                .Where(s => s.Visible == false && s.CustomerId == 1 && s.StatusId < 6)
+                .Where(s => s.Visible == false && s.CustomerId == Convert.ToInt32(customerId) && s.StatusId < 6)
                 .CountAsync();
 
-            return Ok(new { OpenTask = GetCurrentTaskCount, ClosedTask = GetClosedTaskCount });
+            int GetCompletedTaskCount = await _context.Tasks
+                .Where(s => s.Visible == true && s.Status.Name == "Completed")
+                .CountAsync();
+
+            int GetUpdatedTaskCount = await _context.Tasks
+                .Where(s => s.Visible == true && s.Status.Name == "Uploaded")
+                .CountAsync();
+
+            return Ok(new { OpenTask = GetCurrentTaskCount, ClosedTask = GetClosedTaskCount, CompletedTask = GetCompletedTaskCount, UploadedTask = GetUpdatedTaskCount });
         }
 
 
+        [HttpGet("report")]
+        public async Task<ActionResult<IEnumerable<TasksReportDto>>> GetTasksReport([FromQuery] ReportFilters filters)
+        {
+            try
+            {
+                var query = _context.Tasks
+                    .Include(t => t.Status)
+                    .Include(t => t.Project)
+                    .AsQueryable();
 
-        private bool TaskExists(int id) => _context.Tasks.Any(t => t.TaskId == id);
+                if (filters.Status.HasValue)
+                    query = query.Where(t => t.StatusId == filters.Status.Value);
+
+                if (!string.IsNullOrEmpty(filters.TaskName))
+                    query = query.Where(t => t.Description.Contains(filters.TaskName));
+
+                if (filters.ProjectId.HasValue)
+                    query = query.Where(t => t.ApplicationId == filters.ProjectId.Value);
+
+                if (filters.FromDate.HasValue)
+                    query = query.Where(t => t.LastChangeDate >= filters.FromDate.Value);
+
+                if (filters.ToDate.HasValue)
+                    query = query.Where(t => t.LastChangeDate <= filters.ToDate.Value);
+
+                if (filters.DeveloperId.HasValue)
+                    query = query.Where(t => t.UserId == filters.DeveloperId.Value);
+
+                var result = await query
+                    .Select(t => new TasksReportDto
+                    {
+                        Id = t.TaskId,
+                        DeveloperName = t.Users.FirstName,
+                        TaskName = t.Description??"",
+                        StatusName = t.Status.Name,
+                        ProjectName = t.Project.ChrApplicationName??"",
+                        StartDate = t.RegistrationDate,
+                        EndDate = t.LastChangeDate
+                    })
+                    .ToListAsync();
+
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex);
+                return StatusCode(StatusCodes.Status500InternalServerError,
+                    new { message = "An error occurred while generating the report.", detail = ex.Message });
+            }
+        }
+
+        [HttpGet("file/{id}")]
+        public async Task<ActionResult<TaskFileDto>> GetFileContent(int id)
+        {
+            var file = await _context.TblUploadedFiles.FindAsync(id);
+            if (file == null) return NotFound();
+
+            var filePath = Path.Combine("Uploads", file.ChrSavedFileName??"");
+            if (!System.IO.File.Exists(filePath))
+                return NotFound();
+
+            var fileBytes = await System.IO.File.ReadAllBytesAsync(filePath);
+            var base64 = Convert.ToBase64String(fileBytes);
+
+            return Ok(new TaskFileDto
+            {
+                FileName = file.ChrOriginalFileName??"",
+                FileUrl = $"data:application/octet-stream;base64,{base64}" // or correct MIME type
+            });
+        }
     }
 }

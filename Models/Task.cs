@@ -35,5 +35,12 @@ public partial class Task
     public bool? SeriousBug { get; set; }
 
     public bool? SmallBug { get; set; }
+
+    [ForeignKey("StatusId")]
+    public virtual Status Status { get; set; }
+    [ForeignKey("ApplicationId")]
+    public virtual TblApplication Project { get; set; }
+    [ForeignKey("UserId")]
+    public virtual User Users { get; set; }
 }
     

@@ -33,6 +33,7 @@
 
     public class TaskFileDto
     {
+        public int UrlId { get; set; } = 0;
         public string FileName { get; set; } = "";
         public string FileUrl { get; set; } = "";
     }
