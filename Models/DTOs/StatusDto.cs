@@ -48,7 +48,7 @@
 
 
     public class TasksReportDto
-    {
+    { 
         public int Id { get; set; }
         public string DeveloperName { get; set; }
         public string TaskName { get; set; }
