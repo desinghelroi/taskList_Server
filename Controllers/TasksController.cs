@@ -10,6 +10,7 @@ using Microsoft.Data.SqlClient.DataClassification;
 using static Microsoft.EntityFrameworkCore.DbLoggerCategory;
 using Microsoft.AspNetCore.Authorization;
 using System;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace TaskList_Server.Controllers
 {
@@ -26,6 +27,8 @@ namespace TaskList_Server.Controllers
         }
 
         [HttpGet]
+        [EnableRateLimiting("GeneralLimiter")]
+
         public async Task<ActionResult<object>> GetTasks(int page = 1, int pageSize = 20, string filter = "true", string search = "", string staus = "")
         {
             try
@@ -181,6 +184,8 @@ namespace TaskList_Server.Controllers
 
         [HttpPost]
         [Consumes("multipart/form-data")]
+        [EnableRateLimiting("WriteLimiter")]
+
         public async Task<IActionResult> Create([FromForm] CreateTaskDto dto)
         {
             using var transaction = await _context.Database.BeginTransactionAsync();
@@ -253,6 +258,7 @@ namespace TaskList_Server.Controllers
 
 
         [HttpPut("{id}")]
+        [EnableRateLimiting("WriteLimiter")]
         [Consumes("multipart/form-data")]
         public async Task<IActionResult> UpdateTask(int id, [FromForm] TaskDto taskDto)
         {
@@ -318,6 +324,7 @@ namespace TaskList_Server.Controllers
 
 
         [HttpDelete("{id}")]
+        [EnableRateLimiting("WriteLimiter")]
         public async Task<IActionResult> DeleteTask(int id)
         {
             var task = await _context.Tasks.FindAsync(id);

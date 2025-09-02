@@ -1,11 +1,36 @@
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using System.Text;
 using TaskList_Server.Data;
+using System.Threading.RateLimiting;
 
 var builder = WebApplication.CreateBuilder(args);
+
+
+// Add Rate Limiter
+builder.Services.AddRateLimiter(options =>
+{
+    // General limiter: 10 requests per 10 seconds
+    options.AddFixedWindowLimiter("GeneralLimiter", config =>
+    {
+        config.PermitLimit = 10;
+        config.Window = TimeSpan.FromSeconds(10);
+        config.QueueLimit = 2;
+        config.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
+    });
+
+    // Strict limiter for sensitive endpoints
+    options.AddFixedWindowLimiter("WriteLimiter", config =>
+    {
+        config.PermitLimit = 5;
+        config.Window = TimeSpan.FromSeconds(10);
+        config.QueueLimit = 1;
+        config.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
+    });
+});
 
 // Configure SQL Server DbContext
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
@@ -83,21 +108,22 @@ builder.Services.AddSwaggerGen(c =>
 
 var app = builder.Build();
 
-// Enable Swagger
-app.UseSwagger(); // remove c.SerializeAsV2
+app.UseRateLimiter();
+
+
+app.UseSwagger();
 app.UseSwaggerUI(c =>
 {
     c.SwaggerEndpoint("/swagger/v1/swagger.json", "Tasklist API v1");
     c.RoutePrefix = string.Empty;
 });
 
-// Middleware pipeline
 app.UseHttpsRedirection();
 app.UseStaticFiles();
 
 app.UseCors("AllowReactApp");
 
-app.UseAuthentication(); // Must come before UseAuthorization
+app.UseAuthentication(); 
 app.UseAuthorization();
 
 app.MapControllers();
