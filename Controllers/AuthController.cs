@@ -1,13 +1,5 @@
-﻿using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using TaskList_Server.Data;
+﻿using Microsoft.AspNetCore.Mvc;
 using TaskList_Server.Models.DTOs;
-using Microsoft.IdentityModel.Tokens;
-using System.IdentityModel.Tokens.Jwt;
-using System.Security.Claims;
-using System.Text;
-using TaskList_Server.Models;
 using TaskList_Server.Interface;
 
 namespace TaskList_Server.Controllers
