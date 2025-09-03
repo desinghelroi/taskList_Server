@@ -16,7 +16,7 @@ namespace TaskList_Server.Service
             _context = context;
         }
 
-        public async Task<PagedResult<TaskDto>> GetTasksAsync(string filter, string search,string status, int page,int pageSize,string customerId)
+        public async Task<PagedResult<TaskDto>> GetTasksAsync(string filter, string search, string status, int page, int pageSize, string customerId)
         {
             var query = from t in _context.Tasks.AsNoTracking()
                         join c in _context.TblCustomers on t.CustomerId equals c.IntId into cust
@@ -293,7 +293,7 @@ namespace TaskList_Server.Service
 
                 foreach (var file in files)
                 {
-                    var filePath = Path.Combine(Directory.GetCurrentDirectory(), "Uploads", file.ChrSavedFileName);
+                    var filePath = Path.Combine(Directory.GetCurrentDirectory(), "Uploads", file.ChrSavedFileName ?? "");
                     if (File.Exists(filePath))
                         File.Delete(filePath);
 
@@ -316,10 +316,11 @@ namespace TaskList_Server.Service
         public async Task<IEnumerable<StatusDto>> GetStatusesAsync()
         {
             return await _context.Statuses
+                .GroupBy(a => a.Name)
                 .Select(s => new StatusDto
                 {
-                    StatusId = s.StatusId,
-                    Name = s.Name
+                    StatusId = s.First().StatusId,
+                    Name = s.Key ?? ""
                 })
                 .ToListAsync();
         }
@@ -336,10 +337,11 @@ namespace TaskList_Server.Service
         }
 
 
-        public async Task<IEnumerable<DeveloperDto>> GetDevelopersAsync()
+        public async Task<IEnumerable<DeveloperDto>> GetDevelopersAsync(string CustomerId)
         {
+            int CusId = Convert.ToInt32(CustomerId);
             return await _context.Users
-                .Where(u => u.BitShowUser == true)
+                .Where(u => u.BitShowUser == true && u.IntCustomerId == CusId)
                 .Select(u => new DeveloperDto
                 {
                     UserId = u.UserId,
@@ -349,16 +351,19 @@ namespace TaskList_Server.Service
         }
 
 
-        public async Task<IEnumerable<ProjectsDto>> GetProjectListAsync()
+        public async Task<IEnumerable<ProjectsDto>> GetProjectListAsync(string customerId)
         {
-            return await _context.TblApplications
-                .Select(app => new ProjectsDto
-                {
-                    AppId = app.IntId,
-                    ApplicationName = app.ChrApplicationName ?? ""
-                })
-                .ToListAsync();
+            int cusId = Convert.ToInt32(customerId);
+            return await _context.TblApplications.Where(s => s.IntCustomerId == cusId)
+                 .GroupBy(app => app.ChrApplicationName)
+                 .Select(g => new ProjectsDto
+                 {
+                     AppId = g.First().IntId,
+                     ApplicationName = g.Key ?? ""
+                 })
+                 .ToListAsync();
         }
+
         public async Task<TaskCountsDto> GetCountsAsync(string customerId)
         {
             int customerIdInt = Convert.ToInt32(customerId);
@@ -443,7 +448,7 @@ namespace TaskList_Server.Service
             return new TaskFileDto
             {
                 FileName = file.ChrOriginalFileName ?? "",
-                FileUrl = $"data:application/octet-stream;base64,{base64}" 
+                FileUrl = $"data:application/octet-stream;base64,{base64}"
             };
         }
 

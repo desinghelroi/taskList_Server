@@ -98,7 +98,8 @@ namespace TaskList_Server.Controllers
         [HttpGet("application")]
         public async Task<ActionResult<IEnumerable<ProjectsDto>>> GetProjectList()
         {
-            var projects = await _taskService.GetProjectListAsync();
+            var customerId = User.FindFirst("customerId")?.Value;
+            var projects = await _taskService.GetProjectListAsync(customerId);
             return Ok(projects);
         }
 
@@ -112,7 +113,8 @@ namespace TaskList_Server.Controllers
         [HttpGet("get_developers")]
         public async Task<ActionResult<IEnumerable<DeveloperDto>>> GetDevelopers()
         {
-            var developers = await _taskService.GetDevelopersAsync();
+            var customerId = User.FindFirst("customerId")?.Value;
+            var developers = await _taskService.GetDevelopersAsync(customerId);
             return Ok(developers);
         }
 

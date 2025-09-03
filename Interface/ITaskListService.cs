@@ -11,8 +11,8 @@ namespace TaskList_Server.Interface
         Task<(bool Success, string Message)> DeleteTaskAsync(int id);
         Task<IEnumerable<StatusDto>> GetStatusesAsync();
         Task<IEnumerable<PriorityDto>> GetPriorityListAsync();
-        Task<IEnumerable<DeveloperDto>> GetDevelopersAsync();
-        Task<IEnumerable<ProjectsDto>> GetProjectListAsync();
+        Task<IEnumerable<DeveloperDto>> GetDevelopersAsync(string CustomerId);
+        Task<IEnumerable<ProjectsDto>> GetProjectListAsync(string customerId);
         Task<TaskCountsDto> GetCountsAsync(string customerId);
         Task<IEnumerable<TasksReportDto>> GetTasksReportAsync(ReportFilters filters);
         Task<TaskFileDto?> GetFileContentAsync(int id);

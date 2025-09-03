@@ -15,7 +15,6 @@ var builder = WebApplication.CreateBuilder(args);
 #region Add Rate Limiter ---> General limiter and Strict limiter for sensitive endpoints
 builder.Services.AddRateLimiter(options =>
 {
-    // General limiter: 10 requests per 10 seconds
     options.AddFixedWindowLimiter("GeneralLimiter", config =>
     {
         config.PermitLimit = 10;
@@ -24,7 +23,6 @@ builder.Services.AddRateLimiter(options =>
         config.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
     });
 
-    // Strict limiter for sensitive endpoints
     options.AddFixedWindowLimiter("WriteLimiter", config =>
     {
         config.PermitLimit = 5;
