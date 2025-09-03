@@ -11,6 +11,7 @@ using static Microsoft.EntityFrameworkCore.DbLoggerCategory;
 using Microsoft.AspNetCore.Authorization;
 using System;
 using Microsoft.AspNetCore.RateLimiting;
+using TaskList_Server.Interface;
 
 namespace TaskList_Server.Controllers
 {
@@ -19,11 +20,11 @@ namespace TaskList_Server.Controllers
     [ApiController]
     public class TasksController : ControllerBase
     {
-        private readonly Tasklist25Context _context;
+        private readonly ITaskListService _taskService;
 
-        public TasksController(Tasklist25Context context)
+        public TasksController(ITaskListService taskService)
         {
-            _context = context;
+            _taskService = taskService;
         }
 
         [HttpGet]
@@ -31,149 +32,22 @@ namespace TaskList_Server.Controllers
 
         public async Task<ActionResult<object>> GetTasks(int page = 1, int pageSize = 20, string filter = "true", string search = "", string staus = "")
         {
-            try
-            {
-                var customerId = User.FindFirst("customerId")?.Value;
-
-
-                var query = from t in _context.Tasks.AsNoTracking()
-                            join c in _context.TblCustomers on t.CustomerId equals c.IntId into cust
-                            from c in cust.DefaultIfEmpty()
-                            join s in _context.Statuses on t.StatusId equals s.StatusId into stat
-                            from s in stat.DefaultIfEmpty()
-                            join p in _context.Priorities on t.PriorityId equals p.PriorityId into pri
-                            from p in pri.DefaultIfEmpty()
-                            join a in _context.TblApplications on t.ApplicationId equals a.IntId into app
-                            from a in app.DefaultIfEmpty()
-                            join u in _context.Users on t.UserId equals u.UserId into user
-                            from us in user.DefaultIfEmpty()
-                            select new TaskDto
-                            {
-                                TaskId = t.TaskId,
-                                IntDisplayNo = t.IntDisplayNo ?? 0,
-                                UserId = t.UserId ?? 0,
-                                UserName = us.FirstName ?? "",
-                                RegistrationDate = t.RegistrationDate ?? DateTime.Now,
-                                LastChangeDate = t.LastChangeDate,
-                                DelegatedTo = "",
-                                Description = t.Description ?? "",
-                                Visible = t.Visible ?? false,
-                                SeriousBug = t.SeriousBug ?? false,
-                                SmallBug = t.SmallBug ?? false,
-                                CustomerId = c.IntId,
-                                CustomerName = c.ChrCustomerName ?? "",
-                                CustomerCode = c.ChrCustomerCode ?? "",
-                                StatusId = s.StatusId,
-                                StatusName = s.Name,
-                                PriorityId = p.PriorityId,
-                                PriorityName = p.Name,
-                                ApplicationName = a.ChrApplicationName ?? "",
-                                AppId = a.IntId
-                            };
-
-                // Apply filter
-                IQueryable<TaskDto> filteredQuery;
-                if (filter.Equals("true", StringComparison.OrdinalIgnoreCase))
-                    filteredQuery = query.Where(s => s.Visible == true && s.CustomerId == Convert.ToInt32(customerId) && s.StatusId < 6);
-                else
-                    filteredQuery = query.Where(s => s.Visible == false && s.CustomerId == Convert.ToInt32(customerId) && s.StatusId < 6);
-
-                if (!string.IsNullOrEmpty(search))
-                    filteredQuery = query.Where(s => s.Description.Contains(search));
-
-                if (!string.IsNullOrEmpty(staus))
-                    filteredQuery = query.Where(s => s.Visible == true && s.StatusName.Contains(staus));
-
-                var totalRecords = await filteredQuery.CountAsync();
-
-                var tasks = await filteredQuery
-                    .OrderByDescending(t => t.TaskId)
-                    .Skip((page - 1) * pageSize)
-                    .Take(pageSize)
-                    .ToListAsync();
-
-                if (!string.IsNullOrEmpty(search))
-                {
-                    tasks = tasks.Select(t =>
-                    {
-                        t.Description = t.Description.Replace(search, $"<span style='color:#E80F0F;'>{search}</span>");
-                        return t;
-                    }).ToList();
-                }
-
-                return Ok(new
-                {
-                    Data = tasks,
-                    TotalRecords = totalRecords,
-                    Page = page,
-                    PageSize = pageSize,
-                    TotalPages = (int)Math.Ceiling(totalRecords / (double)pageSize)
-                });
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, $"Internal server error: {ex.Message}");
-            }
+            var customerId = User.FindFirst("customerId")?.Value;
+            var result = await _taskService.GetTasksAsync(filter, search, staus, page, pageSize, customerId);
+            return Ok(result);
         }
 
 
 
         [HttpGet("{id}")]
-        public async Task<ActionResult<TaskList_Server.Models.Task>> GetTask(int id)
+        public async Task<IActionResult> GetTaskById(int id)
         {
             try
             {
-                var task = await (from t in _context.Tasks.AsNoTracking()
-                                  join c in _context.TblCustomers on t.CustomerId equals c.IntId into cust
-                                  from c in cust.DefaultIfEmpty()
-                                  join s in _context.Statuses on t.StatusId equals s.StatusId into stat
-                                  from s in stat.DefaultIfEmpty()
-                                  join p in _context.Priorities on t.PriorityId equals p.PriorityId into pri
-                                  from p in pri.DefaultIfEmpty()
-                                  join a in _context.TblApplications on t.ApplicationId equals a.IntId into app
-                                  from a in app.DefaultIfEmpty()
-                                  join u in _context.Users on t.UserId equals u.UserId into user
-                                  from us in user.DefaultIfEmpty()
-                                  where t.TaskId == id
-                                  select new TaskDto
-                                  {
-                                      TaskId = t.TaskId,
-                                      IntDisplayNo = t.IntDisplayNo ?? 0,
-                                      UserId = t.UserId ?? 0,
-                                      UserName = us.FirstName ?? "",
-                                      RegistrationDate = t.RegistrationDate ?? DateTime.Now,
-                                      LastChangeDate = t.LastChangeDate,
-                                      DelegatedTo = "",
-                                      Description = t.Description ?? "",
-                                      Visible = t.Visible ?? false,
-                                      SeriousBug = t.SeriousBug ?? false,
-                                      SmallBug = t.SmallBug ?? false,
-                                      CustomerId = c.IntId,
-                                      CustomerName = c.ChrCustomerName ?? "",
-                                      CustomerCode = c.ChrCustomerCode ?? "",
-                                      StatusId = s.StatusId,
-                                      StatusName = s.Name,
-                                      PriorityId = p.PriorityId,
-                                      PriorityName = p.Name,
-                                      ApplicationName = a.ChrApplicationName ?? "",
-                                      AppId = a.IntId
-                                  }).FirstOrDefaultAsync();
+                var task = await _taskService.GetTaskByIdAsync(id);
+                if (task == null)
+                    return NotFound();
 
-
-                if (task != null)
-                {
-                    var files = _context.TblUploadedFiles
-                        .Where(f => f.IntTaskId == id)
-                        .AsEnumerable()
-                        .Select(f => new TaskFileDto
-                        {
-                            FileName = f.ChrOriginalFileName??"",
-                            UrlId = f.IntId
-                        })
-                        .ToList();
-                    if (files is not null)
-                        task.Files = files;
-                }
                 return Ok(task);
             }
             catch (Exception ex)
@@ -182,77 +56,20 @@ namespace TaskList_Server.Controllers
             }
         }
 
+
         [HttpPost]
         [Consumes("multipart/form-data")]
         [EnableRateLimiting("WriteLimiter")]
-
-        public async Task<IActionResult> Create([FromForm] CreateTaskDto dto)
+        public async Task<IActionResult> CreateTask([FromForm] CreateTaskDto dto)
         {
-            using var transaction = await _context.Database.BeginTransactionAsync();
+            var customerId = Convert.ToInt32(User.FindFirst("customerId")?.Value);
 
-            try
-            {
-                int lastNumber = _context.Tasks
-                    .OrderByDescending(t => t.IntDisplayNo)
-                    .Select(t => t.IntDisplayNo)
-                    .FirstOrDefault() ?? 1;
+            var result = await _taskService.CreateTaskAsync(dto, customerId);
 
-                var task = new TaskList_Server.Models.Task
-                {
-                    Description = dto.Description,
-                    SeriousBug = dto.SeriousBug,
-                    SmallBug = dto.SmallBug,
-                    Visible = dto.Visible,
-                    RegistrationDate = DateTime.Now,
-                    LastChangeDate = DateTime.Now,
-                    UserId = dto.UserId,
-                    DelegatedTo = dto.UserId,
-                    CustomerId = 1,
-                    PriorityId = dto.PriorityId,
-                    ApplicationId = dto.AppId,
-                    StatusId = dto.StatusId,
-                    IntDisplayNo = lastNumber + 1
-                };
+            if (result.Success)
+                return Ok(new { message = result.Message, taskId = result.TaskId });
 
-                _context.Tasks.Add(task);
-                await _context.SaveChangesAsync();
-
-                if (dto.File != null && dto.File.Length > 0)
-                {
-                    var uploadsFolder = Path.Combine(Directory.GetCurrentDirectory(), "Uploads");
-                    if (!Directory.Exists(uploadsFolder))
-                    {
-                        Directory.CreateDirectory(uploadsFolder);
-                    }
-
-                    var uniqueFileName = $"{Guid.NewGuid()}_{Path.GetFileName(dto.File.FileName)}";
-                    var filePath = Path.Combine(uploadsFolder, uniqueFileName);
-
-                    using (var stream = new FileStream(filePath, FileMode.Create))
-                    {
-                        await dto.File.CopyToAsync(stream);
-                    }
-
-                    var fileUpload = new TblUploadedFile
-                    {
-                        ChrOriginalFileName = dto.File.FileName,
-                        ChrSavedFileName = uniqueFileName,
-                        IntTaskId = task.TaskId
-                    };
-
-                    _context.TblUploadedFiles.Add(fileUpload);
-                    await _context.SaveChangesAsync();
-                }
-
-                await transaction.CommitAsync();
-
-                return Ok(new { message = "Task created successfully", taskId = task.TaskId });
-            }
-            catch (Exception ex)
-            {
-                await transaction.RollbackAsync();
-                return StatusCode(500, new { message = "Error creating task", error = ex.Message });
-            }
+            return StatusCode(500, new { message = result.Message });
         }
 
 
@@ -260,66 +77,17 @@ namespace TaskList_Server.Controllers
         [HttpPut("{id}")]
         [EnableRateLimiting("WriteLimiter")]
         [Consumes("multipart/form-data")]
-        public async Task<IActionResult> UpdateTask(int id, [FromForm] TaskDto taskDto)
+        public async Task<IActionResult> UpdateTask(int id, [FromForm] TaskDto dto)
         {
-            if (id != taskDto.TaskId)
+            if (id != dto.TaskId)
                 return BadRequest("Task ID mismatch");
 
-            using var transaction = await _context.Database.BeginTransactionAsync();
+            var result = await _taskService.UpdateTaskAsync(id, dto);
 
-            try
-            {
-                var existingTask = await _context.Tasks.FindAsync(id);
-                if (existingTask == null)
-                    return NotFound();
+            if (!result.Success)
+                return StatusCode(500, new { message = result.Message });
 
-                existingTask.Description = taskDto.Description;
-                existingTask.StatusId = taskDto.StatusId;
-                existingTask.ApplicationId = taskDto.AppId;
-                existingTask.PriorityId = taskDto.PriorityId;
-                existingTask.UserId = taskDto.UserId;
-                existingTask.Visible = taskDto.Visible;
-                existingTask.SeriousBug = taskDto.SeriousBug;
-                existingTask.SmallBug = taskDto.SmallBug;
-                existingTask.LastChangeDate = DateTime.UtcNow;
-
-                await _context.SaveChangesAsync();
-
-                if (taskDto.File != null && taskDto.File.Length > 0)
-                {
-                    var uploadsFolder = Path.Combine(Directory.GetCurrentDirectory(), "Uploads");
-                    if (!Directory.Exists(uploadsFolder))
-                    {
-                        Directory.CreateDirectory(uploadsFolder);
-                    }
-
-                    var uniqueFileName = $"{Guid.NewGuid()}_{Path.GetFileName(taskDto.File.FileName)}";
-                    var filePath = Path.Combine(uploadsFolder, uniqueFileName);
-
-                    using (var stream = new FileStream(filePath, FileMode.Create))
-                    {
-                        await taskDto.File.CopyToAsync(stream);
-                    }
-
-                    var fileUpload = new TblUploadedFile
-                    {
-                        ChrOriginalFileName = taskDto.File.FileName,
-                        ChrSavedFileName = uniqueFileName,
-                        IntTaskId = existingTask.TaskId
-                    };
-
-                    _context.TblUploadedFiles.Add(fileUpload);
-                    await _context.SaveChangesAsync();
-                }
-
-                await transaction.CommitAsync();
-                return Ok(new { message = "Task updated successfully" });
-            }
-            catch (Exception ex)
-            {
-                await transaction.RollbackAsync();
-                return StatusCode(500, new { message = "Error updating task", error = ex.Message });
-            }
+            return Ok(new { message = result.Message });
         }
 
 
@@ -327,25 +95,18 @@ namespace TaskList_Server.Controllers
         [EnableRateLimiting("WriteLimiter")]
         public async Task<IActionResult> DeleteTask(int id)
         {
-            var task = await _context.Tasks.FindAsync(id);
-            if (task == null) return NotFound();
+            var result = await _taskService.DeleteTaskAsync(id);
 
-            _context.Tasks.Remove(task);
-            await _context.SaveChangesAsync();
-            return NoContent();
+            if (!result.Success)
+                return StatusCode(500, new { message = result.Message });
+
+            return Ok(new { message = result.Message });
         }
 
         [HttpGet("statuses")]
         public async Task<ActionResult<IEnumerable<StatusDto>>> GetStatuses()
         {
-            var statuses = await _context.Statuses
-                .Select(s => new StatusDto
-                {
-                    StatusId = s.StatusId,
-                    Name = s.Name
-                })
-                .ToListAsync();
-
+            var statuses = await _taskService.GetStatusesAsync();
             return Ok(statuses);
         }
 
@@ -353,68 +114,33 @@ namespace TaskList_Server.Controllers
         [HttpGet("application")]
         public async Task<ActionResult<IEnumerable<ProjectsDto>>> GetProjectList()
         {
-            var projects = await _context.TblApplications
-                .Select(s => new ProjectsDto
-                {
-                    AppId = s.IntId,
-                    ApplicationName = s.ChrApplicationName??""
-                })
-                .ToListAsync();
-
+            var projects = await _taskService.GetProjectListAsync();
             return Ok(projects);
         }
 
         [HttpGet("priority")]
         public async Task<ActionResult<IEnumerable<PriorityDto>>> GetPriorityList()
         {
-            var priority = await _context.Priorities
-                .Select(s => new PriorityDto
-                {
-                    PriorityId = s.PriorityId,
-                    PriorityName = s.Name
-                })
-                .ToListAsync();
-
-            return Ok(priority);
+            var priorities = await _taskService.GetPriorityListAsync();
+            return Ok(priorities);
         }
 
         [HttpGet("get_developers")]
-        public async Task<ActionResult<IEnumerable<DeveloperDto>>> GetDeveloper()
+        public async Task<ActionResult<IEnumerable<DeveloperDto>>> GetDevelopers()
         {
-            var developer = await _context.Users
-                .Where(s => s.BitShowUser == true)
-                .Select(s => new DeveloperDto
-                {
-                    UserId = s.UserId,
-                    UserName = s.FirstName??""
-                })
-                .ToListAsync();
-
-            return Ok(developer);
+            var developers = await _taskService.GetDevelopersAsync();
+            return Ok(developers);
         }
 
         [HttpGet("get_taskCounts")]
-        public async Task<ActionResult<object>> GetCounts()
+        public async Task<ActionResult<TaskCountsDto>> GetCounts()
         {
             var customerId = User.FindFirst("customerId")?.Value;
+            if (string.IsNullOrEmpty(customerId))
+                return Unauthorized("CustomerId not found in token.");
 
-            int GetCurrentTaskCount = await _context.Tasks
-                .Where(s => s.Visible == true && s.CustomerId == Convert.ToInt32(customerId) && s.StatusId < 6)
-                .CountAsync();
-
-            int GetClosedTaskCount = await _context.Tasks
-                .Where(s => s.Visible == false && s.CustomerId == Convert.ToInt32(customerId) && s.StatusId < 6)
-                .CountAsync();
-
-            int GetCompletedTaskCount = await _context.Tasks
-                .Where(s => s.Visible == true && s.Status.Name == "Completed")
-                .CountAsync();
-
-            int GetUpdatedTaskCount = await _context.Tasks
-                .Where(s => s.Visible == true && s.Status.Name == "Uploaded")
-                .CountAsync();
-
-            return Ok(new { OpenTask = GetCurrentTaskCount, ClosedTask = GetClosedTaskCount, CompletedTask = GetCompletedTaskCount, UploadedTask = GetUpdatedTaskCount });
+            var counts = await _taskService.GetCountsAsync(customerId);
+            return Ok(counts);
         }
 
 
@@ -423,47 +149,11 @@ namespace TaskList_Server.Controllers
         {
             try
             {
-                var query = _context.Tasks
-                    .Include(t => t.Status)
-                    .Include(t => t.Project)
-                    .AsQueryable();
-
-                if (filters.Status.HasValue)
-                    query = query.Where(t => t.StatusId == filters.Status.Value);
-
-                if (!string.IsNullOrEmpty(filters.TaskName))
-                    query = query.Where(t => t.Description.Contains(filters.TaskName));
-
-                if (filters.ProjectId.HasValue)
-                    query = query.Where(t => t.ApplicationId == filters.ProjectId.Value);
-
-                if (filters.FromDate.HasValue)
-                    query = query.Where(t => t.LastChangeDate >= filters.FromDate.Value);
-
-                if (filters.ToDate.HasValue)
-                    query = query.Where(t => t.LastChangeDate <= filters.ToDate.Value);
-
-                if (filters.DeveloperId.HasValue)
-                    query = query.Where(t => t.UserId == filters.DeveloperId.Value);
-
-                var result = await query
-                    .Select(t => new TasksReportDto
-                    {
-                        Id = t.TaskId,
-                        DeveloperName = t.Users.FirstName,
-                        TaskName = t.Description??"",
-                        StatusName = t.Status.Name,
-                        ProjectName = t.Project.ChrApplicationName??"",
-                        StartDate = t.RegistrationDate,
-                        EndDate = t.LastChangeDate
-                    })
-                    .ToListAsync();
-
+                var result = await _taskService.GetTasksReportAsync(filters);
                 return Ok(result);
             }
             catch (Exception ex)
             {
-                Console.WriteLine(ex);
                 return StatusCode(StatusCodes.Status500InternalServerError,
                     new { message = "An error occurred while generating the report.", detail = ex.Message });
             }
@@ -472,21 +162,11 @@ namespace TaskList_Server.Controllers
         [HttpGet("file/{id}")]
         public async Task<ActionResult<TaskFileDto>> GetFileContent(int id)
         {
-            var file = await _context.TblUploadedFiles.FindAsync(id);
-            if (file == null) return NotFound();
-
-            var filePath = Path.Combine("Uploads", file.ChrSavedFileName??"");
-            if (!System.IO.File.Exists(filePath))
+            var fileDto = await _taskService.GetFileContentAsync(id);
+            if (fileDto == null)
                 return NotFound();
 
-            var fileBytes = await System.IO.File.ReadAllBytesAsync(filePath);
-            var base64 = Convert.ToBase64String(fileBytes);
-
-            return Ok(new TaskFileDto
-            {
-                FileName = file.ChrOriginalFileName??"",
-                FileUrl = $"data:application/octet-stream;base64,{base64}" // or correct MIME type
-            });
+            return Ok(fileDto);
         }
     }
 }

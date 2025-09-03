@@ -47,6 +47,13 @@
     }
 
 
+    public class TaskCountsDto
+    {
+        public int OpenTask { get; set; }
+        public int ClosedTask { get; set; }
+        public int CompletedTask { get; set; }
+        public int UploadedTask { get; set; }
+    }
     public class TasksReportDto
     { 
         public int Id { get; set; }

@@ -6,6 +6,8 @@ using Microsoft.OpenApi.Models;
 using System.Text;
 using TaskList_Server.Data;
 using System.Threading.RateLimiting;
+using TaskList_Server.Interface;
+using TaskList_Server.Service;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -39,6 +41,7 @@ builder.Services.AddDbContext<Tasklist25Context>(options =>
 
 // Add Controllers
 builder.Services.AddControllers();
+builder.Services.AddTransient<ITaskListService, TaskListService>();
 
 // JWT Authentication
 builder.Services.AddAuthentication(options =>
