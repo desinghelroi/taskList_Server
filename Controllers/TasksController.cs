@@ -1,15 +1,6 @@
-﻿using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using System.Threading.Tasks;
-using TaskList_Server.Data;
-using TaskList_Server.Models;
+﻿using Microsoft.AspNetCore.Mvc;
 using TaskList_Server.Models.DTOs;
-using System.IO;
-using Microsoft.Data.SqlClient.DataClassification;
-using static Microsoft.EntityFrameworkCore.DbLoggerCategory;
 using Microsoft.AspNetCore.Authorization;
-using System;
 using Microsoft.AspNetCore.RateLimiting;
 using TaskList_Server.Interface;
 
@@ -33,11 +24,10 @@ namespace TaskList_Server.Controllers
         public async Task<ActionResult<object>> GetTasks(int page = 1, int pageSize = 20, string filter = "true", string search = "", string staus = "")
         {
             var customerId = User.FindFirst("customerId")?.Value;
+            if (string.IsNullOrEmpty(customerId)) return BadRequest();
             var result = await _taskService.GetTasksAsync(filter, search, staus, page, pageSize, customerId);
             return Ok(result);
         }
-
-
 
         [HttpGet("{id}")]
         public async Task<IActionResult> GetTaskById(int id)
@@ -56,22 +46,17 @@ namespace TaskList_Server.Controllers
             }
         }
 
-
         [HttpPost]
         [Consumes("multipart/form-data")]
         [EnableRateLimiting("WriteLimiter")]
         public async Task<IActionResult> CreateTask([FromForm] CreateTaskDto dto)
         {
             var customerId = Convert.ToInt32(User.FindFirst("customerId")?.Value);
-
             var result = await _taskService.CreateTaskAsync(dto, customerId);
-
             if (result.Success)
                 return Ok(new { message = result.Message, taskId = result.TaskId });
-
             return StatusCode(500, new { message = result.Message });
         }
-
 
 
         [HttpPut("{id}")]
@@ -109,7 +94,6 @@ namespace TaskList_Server.Controllers
             var statuses = await _taskService.GetStatusesAsync();
             return Ok(statuses);
         }
-
 
         [HttpGet("application")]
         public async Task<ActionResult<IEnumerable<ProjectsDto>>> GetProjectList()

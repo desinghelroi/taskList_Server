@@ -41,7 +41,9 @@ builder.Services.AddDbContext<Tasklist25Context>(options =>
 
 // Add Controllers
 builder.Services.AddControllers();
-builder.Services.AddTransient<ITaskListService, TaskListService>();
+builder.Services.AddScoped<ITaskListService, TaskListService>();
+builder.Services.AddScoped<IAuthService, AuthService>();
+
 
 // JWT Authentication
 builder.Services.AddAuthentication(options =>
