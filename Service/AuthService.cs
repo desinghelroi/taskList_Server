@@ -45,16 +45,15 @@ namespace TaskList_Server.Service
             if (user == null)
                 return (false, "Invalid credentials or customer code.", null);
 
-            // JWT Claims
             var claims = new[]
             {
             new Claim(JwtRegisteredClaimNames.Sub, user.UserId.ToString()),
-            new Claim(JwtRegisteredClaimNames.UniqueName, user.UserName),
-            new Claim("CustomerId", user.IntCustomerId.ToString()),
-            new Claim("MAccess", user.Maccess.ToString())
+            new Claim(JwtRegisteredClaimNames.UniqueName, user.UserName?? ""),
+            new Claim("CustomerId", user.IntCustomerId.ToString()??""),
+            new Claim("MAccess", user.Maccess.ToString()??"")
         };
 
-            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration["Jwt:Key"]));
+            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration["Jwt:Key"] ?? ""));
             var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
             var token = new JwtSecurityToken(
@@ -121,7 +120,7 @@ namespace TaskList_Server.Service
                 .Select(p => new permissionDto
                 {
                     permissionId = p.IntId,
-                    ChrPermission = p.ChrPermission
+                    ChrPermission = p.ChrPermission ?? ""
                 })
                 .ToListAsync();
         }

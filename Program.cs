@@ -12,7 +12,7 @@ using TaskList_Server.Service;
 var builder = WebApplication.CreateBuilder(args);
 
 
-// Add Rate Limiter
+#region Add Rate Limiter ---> General limiter and Strict limiter for sensitive endpoints
 builder.Services.AddRateLimiter(options =>
 {
     // General limiter: 10 requests per 10 seconds
@@ -34,18 +34,28 @@ builder.Services.AddRateLimiter(options =>
     });
 });
 
-// Configure SQL Server DbContext
+#endregion
+
+#region Connection to SQL Server
+
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 builder.Services.AddDbContext<Tasklist25Context>(options =>
     options.UseSqlServer(connectionString));
 
-// Add Controllers
+#endregion
+
+
 builder.Services.AddControllers();
+
+#region DI for Services
+
 builder.Services.AddScoped<ITaskListService, TaskListService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 
+#endregion
 
-// JWT Authentication
+#region jwt authentication and authorization
+
 builder.Services.AddAuthentication(options =>
 {
     options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
@@ -61,14 +71,16 @@ builder.Services.AddAuthentication(options =>
         ValidateIssuerSigningKey = true,
         ValidIssuer = builder.Configuration["Jwt:Issuer"],
         ValidAudience = builder.Configuration["Jwt:Audience"],
-        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"]))
+        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"] ?? ""))
     };
 });
 
-// Authorization
 builder.Services.AddAuthorization();
 
-// CORS for React App
+#endregion
+
+#region cors for react app
+
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowReactApp", policy =>
@@ -79,7 +91,10 @@ builder.Services.AddCors(options =>
     });
 });
 
-// Swagger / OpenAPI
+#endregion
+
+#region swagger 
+//builder.Services.AddSwaggerGen();
 builder.Services.AddSwaggerGen(c =>
 {
     c.SwaggerDoc("v1", new OpenApiInfo
@@ -89,7 +104,6 @@ builder.Services.AddSwaggerGen(c =>
         Description = "API for task management with JWT authentication"
     });
 
-    // JWT Bearer support in Swagger
     c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {
         Name = "Authorization",
@@ -110,6 +124,8 @@ builder.Services.AddSwaggerGen(c =>
         }
     });
 });
+
+#endregion
 
 var app = builder.Build();
 
