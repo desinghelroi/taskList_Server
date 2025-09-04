@@ -6,13 +6,13 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace TaskList_Server.Migrations
 {
     /// <inheritdoc />
-    public partial class InitialCreate : Migration
+    public partial class initialMigration : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.CreateTable(
-                name: "Priorities",
+                name: "Priority",
                 columns: table => new
                 {
                     PriorityId = table.Column<int>(type: "int", nullable: false)
@@ -21,11 +21,11 @@ namespace TaskList_Server.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_Priorities", x => x.PriorityId);
+                    table.PrimaryKey("PK_Priority", x => x.PriorityId);
                 });
 
             migrationBuilder.CreateTable(
-                name: "Statuses",
+                name: "Status",
                 columns: table => new
                 {
                     StatusId = table.Column<int>(type: "int", nullable: false)
@@ -34,32 +34,7 @@ namespace TaskList_Server.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_Statuses", x => x.StatusId);
-                });
-
-            migrationBuilder.CreateTable(
-                name: "Tasks",
-                columns: table => new
-                {
-                    TaskId = table.Column<int>(type: "int", nullable: false)
-                        .Annotation("SqlServer:Identity", "1, 1"),
-                    IntDisplayNo = table.Column<int>(type: "int", nullable: true),
-                    UserId = table.Column<int>(type: "int", nullable: true),
-                    CustomerId = table.Column<int>(type: "int", nullable: true),
-                    RegistrationDate = table.Column<DateTime>(type: "datetime2", nullable: true),
-                    LastChangeDate = table.Column<DateTime>(type: "datetime2", nullable: true),
-                    StatusId = table.Column<int>(type: "int", nullable: true),
-                    PriorityId = table.Column<int>(type: "int", nullable: true),
-                    ApplicationId = table.Column<int>(type: "int", nullable: true),
-                    DelegatedTo = table.Column<int>(type: "int", nullable: true),
-                    Description = table.Column<string>(type: "nvarchar(max)", nullable: true),
-                    Visible = table.Column<bool>(type: "bit", nullable: true),
-                    SeriousBug = table.Column<bool>(type: "bit", nullable: true),
-                    SmallBug = table.Column<bool>(type: "bit", nullable: true)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_Tasks", x => x.TaskId);
+                    table.PrimaryKey("PK_Status", x => x.StatusId);
                 });
 
             migrationBuilder.CreateTable(
@@ -103,7 +78,7 @@ namespace TaskList_Server.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "TblApplications",
+                name: "tblApplication",
                 columns: table => new
                 {
                     IntId = table.Column<int>(type: "int", nullable: false)
@@ -114,11 +89,11 @@ namespace TaskList_Server.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_TblApplications", x => x.IntId);
+                    table.PrimaryKey("PK_tblApplication", x => x.IntId);
                 });
 
             migrationBuilder.CreateTable(
-                name: "TblCustomers",
+                name: "tblCustomer",
                 columns: table => new
                 {
                     IntId = table.Column<int>(type: "int", nullable: false)
@@ -128,11 +103,11 @@ namespace TaskList_Server.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_TblCustomers", x => x.IntId);
+                    table.PrimaryKey("PK_tblCustomer", x => x.IntId);
                 });
 
             migrationBuilder.CreateTable(
-                name: "TblPermissions",
+                name: "tblPermission",
                 columns: table => new
                 {
                     IntId = table.Column<int>(type: "int", nullable: false)
@@ -141,7 +116,7 @@ namespace TaskList_Server.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_TblPermissions", x => x.IntId);
+                    table.PrimaryKey("PK_tblPermission", x => x.IntId);
                 });
 
             migrationBuilder.CreateTable(
@@ -163,9 +138,8 @@ namespace TaskList_Server.Migrations
                 name: "TraceMarches",
                 columns: table => new
                 {
-                    Id = table.Column<int>(type: "int", nullable: false)
+                    RowNumber = table.Column<int>(type: "int", nullable: false)
                         .Annotation("SqlServer:Identity", "1, 1"),
-                    RowNumber = table.Column<int>(type: "int", nullable: false),
                     EventClass = table.Column<int>(type: "int", nullable: true),
                     TextData = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     ApplicationName = table.Column<string>(type: "nvarchar(max)", nullable: true),
@@ -200,7 +174,7 @@ namespace TaskList_Server.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_TraceMarches", x => x.Id);
+                    table.PrimaryKey("PK_TraceMarches", x => x.RowNumber);
                 });
 
             migrationBuilder.CreateTable(
@@ -222,16 +196,68 @@ namespace TaskList_Server.Migrations
                 {
                     table.PrimaryKey("PK_Users", x => x.UserId);
                 });
+
+            migrationBuilder.CreateTable(
+                name: "Tasks",
+                columns: table => new
+                {
+                    TaskId = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    IntDisplayNo = table.Column<int>(type: "int", nullable: true),
+                    UserId = table.Column<int>(type: "int", nullable: true),
+                    CustomerId = table.Column<int>(type: "int", nullable: true),
+                    RegistrationDate = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    LastChangeDate = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    StatusId = table.Column<int>(type: "int", nullable: true),
+                    PriorityId = table.Column<int>(type: "int", nullable: true),
+                    ApplicationId = table.Column<int>(type: "int", nullable: true),
+                    DelegatedTo = table.Column<int>(type: "int", nullable: true),
+                    Description = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    Visible = table.Column<bool>(type: "bit", nullable: true),
+                    SeriousBug = table.Column<bool>(type: "bit", nullable: true),
+                    SmallBug = table.Column<bool>(type: "bit", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Tasks", x => x.TaskId);
+                    table.ForeignKey(
+                        name: "FK_Tasks_Status_StatusId",
+                        column: x => x.StatusId,
+                        principalTable: "Status",
+                        principalColumn: "StatusId");
+                    table.ForeignKey(
+                        name: "FK_Tasks_Users_UserId",
+                        column: x => x.UserId,
+                        principalTable: "Users",
+                        principalColumn: "UserId");
+                    table.ForeignKey(
+                        name: "FK_Tasks_tblApplication_ApplicationId",
+                        column: x => x.ApplicationId,
+                        principalTable: "tblApplication",
+                        principalColumn: "IntId");
+                });
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Tasks_ApplicationId",
+                table: "Tasks",
+                column: "ApplicationId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Tasks_StatusId",
+                table: "Tasks",
+                column: "StatusId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Tasks_UserId",
+                table: "Tasks",
+                column: "UserId");
         }
 
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropTable(
-                name: "Priorities");
-
-            migrationBuilder.DropTable(
-                name: "Statuses");
+                name: "Priority");
 
             migrationBuilder.DropTable(
                 name: "Tasks");
@@ -243,13 +269,10 @@ namespace TaskList_Server.Migrations
                 name: "TblAdmins");
 
             migrationBuilder.DropTable(
-                name: "TblApplications");
+                name: "tblCustomer");
 
             migrationBuilder.DropTable(
-                name: "TblCustomers");
-
-            migrationBuilder.DropTable(
-                name: "TblPermissions");
+                name: "tblPermission");
 
             migrationBuilder.DropTable(
                 name: "TblUploadedFiles");
@@ -258,7 +281,13 @@ namespace TaskList_Server.Migrations
                 name: "TraceMarches");
 
             migrationBuilder.DropTable(
+                name: "Status");
+
+            migrationBuilder.DropTable(
                 name: "Users");
+
+            migrationBuilder.DropTable(
+                name: "tblApplication");
         }
     }
 }
