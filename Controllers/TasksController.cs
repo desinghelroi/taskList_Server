@@ -95,6 +95,7 @@ namespace TaskList_Server.Controllers
         public async Task<ActionResult<IEnumerable<ProjectsDto>>> GetProjectList()
         {
             var customerId = User.FindFirst("customerId")?.Value;
+            if (customerId == null) return NotFound();
             var projects = await _taskService.GetProjectListAsync(customerId);
             return Ok(projects);
         }
@@ -110,6 +111,7 @@ namespace TaskList_Server.Controllers
         public async Task<ActionResult<IEnumerable<DeveloperDto>>> GetDevelopers()
         {
             var customerId = User.FindFirst("customerId")?.Value;
+            if (customerId == null) return NotFound();
             var developers = await _taskService.GetDevelopersAsync(customerId);
             return Ok(developers);
         }
