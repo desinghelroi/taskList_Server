@@ -52,9 +52,9 @@ namespace TaskList_Server.Service
 
             IQueryable<TaskDto> filteredQuery;
             if (filter.Equals("true", StringComparison.OrdinalIgnoreCase))
-                filteredQuery = query.Where(s => s.Visible && s.CustomerId == Convert.ToInt32(customerId) && s.StatusId < 6);
+                filteredQuery = query.Where(s => s.Visible == true && s.CustomerId == Convert.ToInt32(customerId) && s.StatusId < 6);
             else
-                filteredQuery = query.Where(s => !s.Visible && s.CustomerId == Convert.ToInt32(customerId) && s.StatusId < 6);
+                filteredQuery = query.Where(s => s.Visible == false && s.CustomerId == Convert.ToInt32(customerId) && s.StatusId < 6);
 
             if (!string.IsNullOrEmpty(search))
                 filteredQuery = query.Where(s => s.Description.Contains(search));
@@ -312,7 +312,7 @@ namespace TaskList_Server.Service
 
         public async Task<IEnumerable<StatusDto>> GetStatusesAsync()
         {
-            return await _context.Statuses
+            var status = await _context.Statuses
                 .GroupBy(a => a.Name)
                 .Select(s => new StatusDto
                 {
@@ -320,24 +320,40 @@ namespace TaskList_Server.Service
                     Name = s.Key ?? ""
                 })
                 .ToListAsync();
+
+
+            status.Insert(0, new StatusDto
+            {
+                StatusId = 0,
+                Name = "--Select--"
+            });
+            return status;
         }
 
         public async Task<IEnumerable<PriorityDto>> GetPriorityListAsync()
         {
-            return await _context.Priorities
+            var Priorities = await _context.Priorities
                 .Select(p => new PriorityDto
                 {
                     PriorityId = p.PriorityId,
                     PriorityName = p.Name
                 })
                 .ToListAsync();
+
+
+            Priorities.Insert(0, new PriorityDto
+            {
+                PriorityId = 0,
+                PriorityName = "--Select--"
+            });
+            return Priorities;
         }
 
 
         public async Task<IEnumerable<DeveloperDto>> GetDevelopersAsync(string CustomerId)
         {
             int CusId = Convert.ToInt32(CustomerId);
-            return await _context.Users
+            var Users =  await _context.Users
                 .Where(u => u.BitShowUser == true && u.IntCustomerId == CusId)
                 .Select(u => new DeveloperDto
                 {
@@ -345,20 +361,39 @@ namespace TaskList_Server.Service
                     UserName = u.FirstName ?? ""
                 })
                 .ToListAsync();
+
+
+            Users.Insert(0, new DeveloperDto
+            {
+                UserId = 0,
+                UserName = "--Select--"
+            });
+            return Users;
         }
 
 
         public async Task<IEnumerable<ProjectsDto>> GetProjectListAsync(string customerId)
         {
             int cusId = Convert.ToInt32(customerId);
-            return await _context.TblApplications.Where(s => s.IntCustomerId == cusId)
-                 .GroupBy(app => app.ChrApplicationName)
-                 .Select(g => new ProjectsDto
-                 {
-                     AppId = g.First().IntId,
-                     ApplicationName = g.Key ?? ""
-                 })
-                 .ToListAsync();
+
+            var apps = await _context.TblApplications
+                .Where(s => s.IntCustomerId == cusId)
+                .GroupBy(app => app.ChrApplicationName)
+                .Select(g => new ProjectsDto
+                {
+                    AppId = g.First().IntId,
+                    ApplicationName = g.Key ?? ""
+                })
+                .OrderBy(p => p.ApplicationName)
+                .ToListAsync();
+
+            apps.Insert(0, new ProjectsDto
+            {
+                AppId = 0,
+                ApplicationName = "--Select--"
+            });
+
+            return apps;
         }
 
         public async Task<TaskCountsDto> GetCountsAsync(string customerId)
