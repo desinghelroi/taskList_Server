@@ -89,11 +89,7 @@ namespace TaskList_Server.Controllers
         }
 
         [HttpGet("statuses")]
-        public async Task<ActionResult<IEnumerable<StatusDto>>> GetStatuses()
-        {
-            var statuses = await _taskService.GetStatusesAsync();
-            return Ok(statuses);
-        }
+        public async Task<ActionResult<IEnumerable<StatusDto>>> GetStatuses() => Ok(await _taskService.GetStatusesAsync());
 
         [HttpGet("application")]
         public async Task<ActionResult<IEnumerable<ProjectsDto>>> GetProjectList()

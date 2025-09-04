@@ -11,10 +11,7 @@ namespace TaskList_Server.Service
     {
         private readonly Tasklist25Context _context;
 
-        public TaskListService(Tasklist25Context context)
-        {
-            _context = context;
-        }
+        public TaskListService(Tasklist25Context context) => _context = context;
 
         public async Task<PagedResult<TaskDto>> GetTasksAsync(string filter, string search, string status, int page, int pageSize, string customerId)
         {
