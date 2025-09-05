@@ -1,5 +1,7 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using System;
+using System.Text.RegularExpressions;
+using System.Threading.Tasks;
 using TaskList_Server.Data;
 using TaskList_Server.Interface;
 using TaskList_Server.Models;
@@ -74,7 +76,12 @@ namespace TaskList_Server.Service
             {
                 tasks = tasks.Select(t =>
                 {
-                    t.Description = t.Description.Replace(search, $"<span style='color:#E80F0F;'>{search}</span>");
+                    t.Description = Regex.Replace(
+                        t.Description,
+                        Regex.Escape(search),
+                        m => $"<span style='background-color:#E80F0F;'>{m.Value}</span>",
+                        RegexOptions.IgnoreCase
+                    ); 
                     return t;
                 }).ToList();
             }
@@ -325,7 +332,7 @@ namespace TaskList_Server.Service
             status.Insert(0, new StatusDto
             {
                 StatusId = 0,
-                Name = "--Select--"
+                Name = "-- Välj Status --"
             });
             return status;
         }
@@ -344,7 +351,7 @@ namespace TaskList_Server.Service
             Priorities.Insert(0, new PriorityDto
             {
                 PriorityId = 0,
-                PriorityName = "--Select--"
+                PriorityName = "-- Välj Prioritet --"
             });
             return Priorities;
         }
@@ -366,7 +373,7 @@ namespace TaskList_Server.Service
             Users.Insert(0, new DeveloperDto
             {
                 UserId = 0,
-                UserName = "--Select--"
+                UserName = "-- Välj Utvecklare --"
             });
             return Users;
         }
@@ -390,7 +397,7 @@ namespace TaskList_Server.Service
             apps.Insert(0, new ProjectsDto
             {
                 AppId = 0,
-                ApplicationName = "--Select--"
+                ApplicationName = "-- Välj Projekt --"
             });
 
             return apps;
@@ -452,18 +459,34 @@ namespace TaskList_Server.Service
             if (filters.DeveloperId.HasValue)
                 query = query.Where(t => t.UserId == filters.DeveloperId.Value);
 
-            return await query
+            var data = await query
                 .Select(t => new TasksReportDto
                 {
                     Id = t.TaskId,
                     DeveloperName = t.Users.FirstName ?? "",
-                    TaskName = t.Description ?? "",
+                    TaskName =  t.Description ?? "",
                     StatusName = t.Status.Name,
                     ProjectName = t.Project.ChrApplicationName ?? "",
                     StartDate = t.RegistrationDate,
                     EndDate = t.LastChangeDate
                 })
                 .ToListAsync();
+
+            if (!string.IsNullOrEmpty(filters.TaskName))
+            {
+                data = data.Select(t =>
+                {
+                    t.TaskName = Regex.Replace(
+                        t.TaskName,
+                        Regex.Escape(filters.TaskName),
+                        m => $"<span style='background-color:#E80F0F;'>{m.Value}</span>",
+                        RegexOptions.IgnoreCase
+                    );
+                    return t;
+                }).ToList();
+            }
+
+            return data;
         }
 
         public async Task<TaskFileDto?> GetFileContentAsync(int id)
