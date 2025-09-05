@@ -103,7 +103,7 @@ namespace TaskList_Server.Controllers
         [HttpGet("priority")]
         public async Task<ActionResult<IEnumerable<PriorityDto>>> GetPriorityList()
         {
-            var priorities = await _taskService.GetPriorityListAsync();
+            var priorities = await _taskService.GetPriorityListAsync();   
             return Ok(priorities);
         }
 

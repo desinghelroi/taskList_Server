@@ -6,7 +6,6 @@ using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using TaskList_Server.Data;
 
-
 #nullable disable
 
 namespace TaskList_Server.Migrations
@@ -37,7 +36,7 @@ namespace TaskList_Server.Migrations
 
                     b.HasKey("PriorityId");
 
-                    b.ToTable("Priorities");
+                    b.ToTable("Priority", (string)null);
                 });
 
             modelBuilder.Entity("TaskList_Server.Models.Status", b =>
@@ -54,7 +53,7 @@ namespace TaskList_Server.Migrations
 
                     b.HasKey("StatusId");
 
-                    b.ToTable("Statuses");
+                    b.ToTable("Status", (string)null);
                 });
 
             modelBuilder.Entity("TaskList_Server.Models.Task", b =>
@@ -106,7 +105,13 @@ namespace TaskList_Server.Migrations
 
                     b.HasKey("TaskId");
 
-                    b.ToTable("Tasks");
+                    b.HasIndex("ApplicationId");
+
+                    b.HasIndex("StatusId");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("Tasks", (string)null);
                 });
 
             modelBuilder.Entity("TaskList_Server.Models.TasksOld", b =>
@@ -205,7 +210,7 @@ namespace TaskList_Server.Migrations
 
                     b.HasKey("IntId");
 
-                    b.ToTable("TblApplications");
+                    b.ToTable("tblApplication", (string)null);
                 });
 
             modelBuilder.Entity("TaskList_Server.Models.TblCustomer", b =>
@@ -224,7 +229,7 @@ namespace TaskList_Server.Migrations
 
                     b.HasKey("IntId");
 
-                    b.ToTable("TblCustomers");
+                    b.ToTable("tblCustomer", (string)null);
                 });
 
             modelBuilder.Entity("TaskList_Server.Models.TblPermission", b =>
@@ -240,7 +245,7 @@ namespace TaskList_Server.Migrations
 
                     b.HasKey("IntId");
 
-                    b.ToTable("TblPermissions");
+                    b.ToTable("tblPermission", (string)null);
                 });
 
             modelBuilder.Entity("TaskList_Server.Models.TblUploadedFile", b =>
@@ -406,6 +411,27 @@ namespace TaskList_Server.Migrations
                     b.HasKey("UserId");
 
                     b.ToTable("Users");
+                });
+
+            modelBuilder.Entity("TaskList_Server.Models.Task", b =>
+                {
+                    b.HasOne("TaskList_Server.Models.TblApplication", "Project")
+                        .WithMany()
+                        .HasForeignKey("ApplicationId");
+
+                    b.HasOne("TaskList_Server.Models.Status", "Status")
+                        .WithMany()
+                        .HasForeignKey("StatusId");
+
+                    b.HasOne("TaskList_Server.Models.User", "Users")
+                        .WithMany()
+                        .HasForeignKey("UserId");
+
+                    b.Navigation("Project");
+
+                    b.Navigation("Status");
+
+                    b.Navigation("Users");
                 });
 #pragma warning restore 612, 618
         }
