@@ -26,7 +26,7 @@ public partial class Tasklist25Context : DbContext
 
     public virtual DbSet<TblAdmin> TblAdmins { get; set; }
 
-    public virtual DbSet<TblApplication> TblApplications { get; set; }
+    public virtual DbSet<TblApplication> TblApplications { get; set; } 
 
     public virtual DbSet<TblCustomer> TblCustomers { get; set; }
 
