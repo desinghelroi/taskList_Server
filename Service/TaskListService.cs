@@ -13,7 +13,7 @@ namespace TaskList_Server.Service
 
         public TaskListService(Tasklist25Context context) => _context = context;
 
-        public async Task<PagedResult<TaskDto>> GetTasksAsync(string filter, string search, string status, int page, int pageSize, string customerId)
+        public async Task<PagedResult<TaskDto>> GetTasksAsync(string filter, string search, string status, int page, int pageSize, string customerId, int developerId, int projectId)
         {
             var query = from t in _context.Tasks.AsNoTracking()
                         join c in _context.TblCustomers on t.CustomerId equals c.IntId into cust
@@ -61,6 +61,10 @@ namespace TaskList_Server.Service
 
             if (!string.IsNullOrEmpty(status))
                 filteredQuery = query.Where(s => s.Visible && s.StatusName.Contains(status));
+            if (developerId != 0)
+                filteredQuery = filteredQuery.Where(s => s.Visible && s.UserId == developerId);
+            if (projectId != 0)
+                filteredQuery = filteredQuery.Where(s => s.Visible && s.AppId == projectId);
 
             var totalRecords = await filteredQuery.CountAsync();
 
