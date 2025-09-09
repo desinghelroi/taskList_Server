@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using TaskList_Server.Data;
 
@@ -12,9 +13,11 @@ using TaskList_Server.Data;
 namespace TaskList_Server.Migrations
 {
     [DbContext(typeof(Tasklist25Context))]
-    partial class Tasklist25ContextModelSnapshot : ModelSnapshot
+    [Migration("20250829082444_InitialCreate")]
+    partial class InitialCreate
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -267,11 +270,11 @@ namespace TaskList_Server.Migrations
 
             modelBuilder.Entity("TaskList_Server.Models.TraceMarch", b =>
                 {
-                    b.Property<int>("RowNumber")
+                    b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("int");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("RowNumber"));
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
                     b.Property<string>("ApplicationName")
                         .HasColumnType("nvarchar(max)");
@@ -342,6 +345,9 @@ namespace TaskList_Server.Migrations
                     b.Property<long?>("RowCounts")
                         .HasColumnType("bigint");
 
+                    b.Property<int>("RowNumber")
+                        .HasColumnType("int");
+
                     b.Property<string>("ServerName")
                         .HasColumnType("nvarchar(max)");
 
@@ -366,7 +372,7 @@ namespace TaskList_Server.Migrations
                     b.Property<long?>("XactSequence")
                         .HasColumnType("bigint");
 
-                    b.HasKey("RowNumber");
+                    b.HasKey("Id");
 
                     b.ToTable("TraceMarches");
                 });
