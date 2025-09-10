@@ -6,6 +6,7 @@ using TaskList_Server.Interface;
 using Microsoft.EntityFrameworkCore;
 using TaskList_Server.Models;
 using TaskList_Server.Data;
+using TaskList_Server.Service;
 
 namespace TaskList_Server.Controllers
 {
@@ -15,12 +16,13 @@ namespace TaskList_Server.Controllers
     public class TasksController : ControllerBase
     {
         private readonly ITaskListService _taskService;
-        private readonly Tasklist25Context _context;
+        private readonly IProjectService _projectService;
 
-        public TasksController(ITaskListService taskService, Tasklist25Context context)
+
+        public TasksController(ITaskListService taskService, IProjectService projectService)
         {
             _taskService = taskService;
-            _context = context;
+            _projectService = projectService;
         }
 
         [HttpGet]
@@ -161,13 +163,38 @@ namespace TaskList_Server.Controllers
         [HttpGet("get_allProjects")]
         public async Task<IEnumerable<TblApplication>> GetAllProjectList()
         {
-            var apps = await _context.TblApplications.Select(s=> new TblApplication
-            {
-                ChrApplicationName = s.ChrApplicationName,
-                IntId = s.IntId,
-                IntCustomerId =s.IntCustomerId
-            }).ToListAsync();
-            return apps;
+            return await _projectService.GetAllProjectsAsync();
+        }
+
+        [HttpPost("createProject")]
+        public async Task<ActionResult<TblApplication>> CreateProject([FromBody] TblApplication app)
+        {
+            if (string.IsNullOrWhiteSpace(app.ChrApplicationName))
+                return BadRequest("Project name is required");
+
+            var customerId = User.FindFirst("customerId")?.Value;
+            var created = await _projectService.CreateProjectAsync(app, customerId);
+
+            return CreatedAtAction(nameof(GetAllProjectList), new { id = created.IntId }, created);
+        }
+
+        [HttpPut("updateProject/{id}")]
+        public async Task<IActionResult> UpdateProject(int id, [FromBody] TblApplication app)
+        {
+            var customerId = User.FindFirst("customerId")?.Value;
+            var updated = await _projectService.UpdateProjectAsync(id, app, customerId);
+
+            if (updated == null) return NotFound();
+            return Ok(updated);
+        }
+
+        [HttpDelete("deleteProject/{id}")]
+        public async Task<IActionResult> DeleteProject(int id)
+        {
+            var deleted = await _projectService.DeleteProjectAsync(id);
+            if (!deleted) return NotFound();
+
+            return Ok(new { message = "Project deleted successfully" });
         }
     }
 }

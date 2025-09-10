@@ -49,6 +49,7 @@ builder.Services.AddControllers();
 
 builder.Services.AddScoped<ITaskListService, TaskListService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddScoped<IProjectService, ProjectService>();
 
 #endregion
 
