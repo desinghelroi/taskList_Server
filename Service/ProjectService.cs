@@ -2,6 +2,7 @@
 using TaskList_Server.Data;
 using TaskList_Server.Interface;
 using TaskList_Server.Models;
+using TaskList_Server.Models.DTOs;
 
 namespace TaskList_Server.Service
 {
@@ -62,5 +63,30 @@ namespace TaskList_Server.Service
             await _context.SaveChangesAsync();
             return true;
         }
+
+
+
+        public async Task<IEnumerable<EmployeeTaskStatsDto>> GetEmployeeTaskStatsAsync(DateTime fromDate, DateTime toDate)
+        {
+            var query = _context.Tasks
+                .Include(t => t.Users)
+                .Where(t => t.LastChangeDate >= fromDate && t.LastChangeDate <= toDate && t.Users.BitShowUser == true);
+
+            var data = await query
+                .GroupBy(t => new { t.UserId, t.Users.FirstName })
+                .Select(g => new EmployeeTaskStatsDto
+                {
+                    DeveloperId = g.Key.UserId ?? 0,
+                    DeveloperName = g.Key.FirstName ?? "Unknown",
+                    TaskCount = g.Count()
+                })
+                .OrderByDescending(x => x.TaskCount)
+                .ToListAsync();
+
+            return data;
+        }
+
+
+
     }
 }

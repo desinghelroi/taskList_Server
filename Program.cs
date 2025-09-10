@@ -135,7 +135,7 @@ app.UseSwagger();
 app.UseSwaggerUI(c =>
 {
     c.SwaggerEndpoint("/swagger/v1/swagger.json", "Tasklist API v1");
-    c.RoutePrefix = "swagger";
+    c.RoutePrefix = string.Empty; 
 });
 
 app.UseHttpsRedirection();

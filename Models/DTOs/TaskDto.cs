@@ -37,4 +37,12 @@
         public string FileName { get; set; } = "";
         public string FileUrl { get; set; } = "";
     }
+
+    public class EmployeeTaskStatsDto
+    {
+        public int DeveloperId { get; set; }
+        public string DeveloperName { get; set; } = "";
+        public int TaskCount { get; set; }
+    }
+
 }

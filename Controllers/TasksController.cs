@@ -196,5 +196,16 @@ namespace TaskList_Server.Controllers
 
             return Ok(new { message = "Project deleted successfully" });
         }
+
+        [HttpGet("employeeTaskStats")]
+        public async Task<ActionResult<IEnumerable<EmployeeTaskStatsDto>>> GetEmployeeTaskStats([FromQuery] string fromDate, [FromQuery] string toDate)
+        {
+            DateTime from = Convert.ToDateTime(fromDate);
+            DateTime to = Convert.ToDateTime(toDate);
+            var data = await _projectService.GetEmployeeTaskStatsAsync(from, to);
+            return Ok(data);
+        }
+
+
     }
 }

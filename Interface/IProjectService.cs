@@ -1,4 +1,5 @@
 ﻿using TaskList_Server.Models;
+using TaskList_Server.Models.DTOs;
 
 namespace TaskList_Server.Interface
 {
@@ -8,5 +9,6 @@ namespace TaskList_Server.Interface
         Task<TblApplication> CreateProjectAsync(TblApplication app, string? customerId);
         Task<TblApplication?> UpdateProjectAsync(int id, TblApplication app, string? customerId);
         Task<bool> DeleteProjectAsync(int id);
+        Task<IEnumerable<EmployeeTaskStatsDto>> GetEmployeeTaskStatsAsync(DateTime fromDate, DateTime toDate);
     }
 }
