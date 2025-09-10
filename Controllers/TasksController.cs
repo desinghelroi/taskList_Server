@@ -26,11 +26,11 @@ namespace TaskList_Server.Controllers
         [HttpGet]
         [EnableRateLimiting("GeneralLimiter")]
 
-        public async Task<ActionResult<object>> GetTasks(int page = 1, int pageSize = 20, string filter = "true", string search = "", string staus = "")
+        public async Task<ActionResult<object>> GetTasks(int page = 1, int pageSize = 20, string filter = "true", string search = "", string staus = "", int developerId = 0, int projectId=0)
         {
             var customerId = User.FindFirst("customerId")?.Value;
             if (string.IsNullOrEmpty(customerId)) return BadRequest();
-            var result = await _taskService.GetTasksAsync(filter, search, staus, page, pageSize, customerId);
+            var result = await _taskService.GetTasksAsync(filter, search, staus, page, pageSize, customerId,developerId,projectId);
             return Ok(result);
         }
 

@@ -4,7 +4,7 @@ namespace TaskList_Server.Interface
 {
     public interface ITaskListService
     {
-        Task<PagedResult<TaskDto>> GetTasksAsync(string filter, string search, string status, int page, int pageSize, string customerId);
+        Task<PagedResult<TaskDto>> GetTasksAsync(string filter, string search, string status, int page, int pageSize, string customerId, int developerId,int projectId);
         Task<TaskDto?> GetTaskByIdAsync(int id);
         Task<(bool Success, string Message, int? TaskId)> CreateTaskAsync(CreateTaskDto dto, int customerId);
         Task<(bool Success, string Message)> UpdateTaskAsync(int id, TaskDto dto);
