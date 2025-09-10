@@ -3,6 +3,10 @@ using TaskList_Server.Models.DTOs;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.RateLimiting;
 using TaskList_Server.Interface;
+using Microsoft.EntityFrameworkCore;
+using TaskList_Server.Models;
+using TaskList_Server.Data;
+using TaskList_Server.Service;
 
 namespace TaskList_Server.Controllers
 {
@@ -12,20 +16,23 @@ namespace TaskList_Server.Controllers
     public class TasksController : ControllerBase
     {
         private readonly ITaskListService _taskService;
+        private readonly IProjectService _projectService;
 
-        public TasksController(ITaskListService taskService)
+
+        public TasksController(ITaskListService taskService, IProjectService projectService)
         {
             _taskService = taskService;
+            _projectService = projectService;
         }
 
         [HttpGet]
         [EnableRateLimiting("GeneralLimiter")]
 
-        public async Task<ActionResult<object>> GetTasks(int page = 1, int pageSize = 20, string filter = "true", string search = "", string staus = "")
+        public async Task<ActionResult<object>> GetTasks(int page = 1, int pageSize = 20, string filter = "true", string search = "", string staus = "", int developerId = 0, int projectId=0)
         {
             var customerId = User.FindFirst("customerId")?.Value;
             if (string.IsNullOrEmpty(customerId)) return BadRequest();
-            var result = await _taskService.GetTasksAsync(filter, search, staus, page, pageSize, customerId);
+            var result = await _taskService.GetTasksAsync(filter, search, staus, page, pageSize, customerId,developerId,projectId);
             return Ok(result);
         }
 
@@ -95,6 +102,7 @@ namespace TaskList_Server.Controllers
         public async Task<ActionResult<IEnumerable<ProjectsDto>>> GetProjectList()
         {
             var customerId = User.FindFirst("customerId")?.Value;
+            if (customerId == null) return NotFound();
             var projects = await _taskService.GetProjectListAsync(customerId);
             return Ok(projects);
         }
@@ -102,7 +110,7 @@ namespace TaskList_Server.Controllers
         [HttpGet("priority")]
         public async Task<ActionResult<IEnumerable<PriorityDto>>> GetPriorityList()
         {
-            var priorities = await _taskService.GetPriorityListAsync();
+            var priorities = await _taskService.GetPriorityListAsync();   
             return Ok(priorities);
         }
 
@@ -110,6 +118,7 @@ namespace TaskList_Server.Controllers
         public async Task<ActionResult<IEnumerable<DeveloperDto>>> GetDevelopers()
         {
             var customerId = User.FindFirst("customerId")?.Value;
+            if (customerId == null) return NotFound();
             var developers = await _taskService.GetDevelopersAsync(customerId);
             return Ok(developers);
         }
@@ -150,5 +159,53 @@ namespace TaskList_Server.Controllers
 
             return Ok(fileDto);
         }
+
+        [HttpGet("get_allProjects")]
+        public async Task<IEnumerable<TblApplication>> GetAllProjectList()
+        {
+            return await _projectService.GetAllProjectsAsync();
+        }
+
+        [HttpPost("createProject")]
+        public async Task<ActionResult<TblApplication>> CreateProject([FromBody] TblApplication app)
+        {
+            if (string.IsNullOrWhiteSpace(app.ChrApplicationName))
+                return BadRequest("Project name is required");
+
+            var customerId = User.FindFirst("customerId")?.Value;
+            var created = await _projectService.CreateProjectAsync(app, customerId);
+
+            return CreatedAtAction(nameof(GetAllProjectList), new { id = created.IntId }, created);
+        }
+
+        [HttpPut("updateProject/{id}")]
+        public async Task<IActionResult> UpdateProject(int id, [FromBody] TblApplication app)
+        {
+            var customerId = User.FindFirst("customerId")?.Value;
+            var updated = await _projectService.UpdateProjectAsync(id, app, customerId);
+
+            if (updated == null) return NotFound();
+            return Ok(updated);
+        }
+
+        [HttpDelete("deleteProject/{id}")]
+        public async Task<IActionResult> DeleteProject(int id)
+        {
+            var deleted = await _projectService.DeleteProjectAsync(id);
+            if (!deleted) return NotFound();
+
+            return Ok(new { message = "Project deleted successfully" });
+        }
+
+        [HttpGet("employeeTaskStats")]
+        public async Task<ActionResult<IEnumerable<EmployeeTaskStatsDto>>> GetEmployeeTaskStats([FromQuery] string fromDate, [FromQuery] string toDate)
+        {
+            DateTime from = Convert.ToDateTime(fromDate);
+            DateTime to = Convert.ToDateTime(toDate);
+            var data = await _projectService.GetEmployeeTaskStatsAsync(from, to);
+            return Ok(data);
+        }
+
+
     }
 }

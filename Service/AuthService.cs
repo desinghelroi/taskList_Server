@@ -124,5 +124,26 @@ namespace TaskList_Server.Service
                 })
                 .ToListAsync();
         }
+
+
+        public async Task<IEnumerable<User>> getAllUsers()
+        {
+            return await _context.Users
+                .Select(p => new User
+                {
+                    UserId = p.UserId,
+                    UserName = p.UserName,
+                    Email = p.Email,
+                    IntCustomerId = p.IntCustomerId,
+                    BitShowUser = p.BitShowUser,
+                    Maccess = p.Maccess,
+                    FirstName = p.FirstName,
+                    LastName = p.LastName,
+                    PassWord = p.PassWord
+                })
+                .ToListAsync();
+        }
+
+
     }
 }

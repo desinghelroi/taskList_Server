@@ -1,5 +1,8 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using System;
+using System.Text.RegularExpressions;
+using System.Threading.Tasks;
 using TaskList_Server.Data;
 using TaskList_Server.Interface;
 using TaskList_Server.Models;
@@ -13,7 +16,7 @@ namespace TaskList_Server.Service
 
         public TaskListService(Tasklist25Context context) => _context = context;
 
-        public async Task<PagedResult<TaskDto>> GetTasksAsync(string filter, string search, string status, int page, int pageSize, string customerId)
+        public async Task<PagedResult<TaskDto>> GetTasksAsync(string filter, string search, string status, int page, int pageSize, string customerId, int developerId, int projectId)
         {
             var query = from t in _context.Tasks.AsNoTracking()
                         join c in _context.TblCustomers on t.CustomerId equals c.IntId into cust
@@ -52,15 +55,19 @@ namespace TaskList_Server.Service
 
             IQueryable<TaskDto> filteredQuery;
             if (filter.Equals("true", StringComparison.OrdinalIgnoreCase))
-                filteredQuery = query.Where(s => s.Visible && s.CustomerId == Convert.ToInt32(customerId) && s.StatusId < 6);
+                filteredQuery = query.Where(s => s.Visible == true && s.CustomerId == Convert.ToInt32(customerId) && s.StatusId < 6);
             else
-                filteredQuery = query.Where(s => !s.Visible && s.CustomerId == Convert.ToInt32(customerId) && s.StatusId < 6);
+                filteredQuery = query.Where(s => s.Visible == false && s.CustomerId == Convert.ToInt32(customerId) && s.StatusId < 6);
 
             if (!string.IsNullOrEmpty(search))
                 filteredQuery = query.Where(s => s.Description.Contains(search));
 
             if (!string.IsNullOrEmpty(status))
                 filteredQuery = query.Where(s => s.Visible && s.StatusName.Contains(status));
+            if (developerId != 0)
+                filteredQuery = filteredQuery.Where(s => s.Visible && s.UserId == developerId);
+            if (projectId != 0)
+                filteredQuery = filteredQuery.Where(s => s.Visible && s.AppId == projectId);
 
             var totalRecords = await filteredQuery.CountAsync();
 
@@ -74,7 +81,12 @@ namespace TaskList_Server.Service
             {
                 tasks = tasks.Select(t =>
                 {
-                    t.Description = t.Description.Replace(search, $"<span style='color:#E80F0F;'>{search}</span>");
+                    t.Description = Regex.Replace(
+                        t.Description,
+                        Regex.Escape(search),
+                        m => $"<span style='background-color:#E80F0F;'>{m.Value}</span>",
+                        RegexOptions.IgnoreCase
+                    ); 
                     return t;
                 }).ToList();
             }
@@ -312,7 +324,7 @@ namespace TaskList_Server.Service
 
         public async Task<IEnumerable<StatusDto>> GetStatusesAsync()
         {
-            return await _context.Statuses
+            var status = await _context.Statuses
                 .GroupBy(a => a.Name)
                 .Select(s => new StatusDto
                 {
@@ -320,24 +332,40 @@ namespace TaskList_Server.Service
                     Name = s.Key ?? ""
                 })
                 .ToListAsync();
+
+
+            status.Insert(0, new StatusDto
+            {
+                StatusId = 0,
+                Name = "-- Välj Status --"
+            });
+            return status;
         }
 
         public async Task<IEnumerable<PriorityDto>> GetPriorityListAsync()
         {
-            return await _context.Priorities
+            var Priorities = await _context.Priorities
                 .Select(p => new PriorityDto
                 {
                     PriorityId = p.PriorityId,
                     PriorityName = p.Name
                 })
                 .ToListAsync();
+
+
+            Priorities.Insert(0, new PriorityDto
+            {
+                PriorityId = 0,
+                PriorityName = "-- Välj Prioritet --"
+            });
+            return Priorities;
         }
 
 
         public async Task<IEnumerable<DeveloperDto>> GetDevelopersAsync(string CustomerId)
         {
             int CusId = Convert.ToInt32(CustomerId);
-            return await _context.Users
+            var Users =  await _context.Users
                 .Where(u => u.BitShowUser == true && u.IntCustomerId == CusId)
                 .Select(u => new DeveloperDto
                 {
@@ -345,20 +373,39 @@ namespace TaskList_Server.Service
                     UserName = u.FirstName ?? ""
                 })
                 .ToListAsync();
+
+
+            Users.Insert(0, new DeveloperDto
+            {
+                UserId = 0,
+                UserName = "-- Välj Utvecklare --"
+            });
+            return Users;
         }
 
 
         public async Task<IEnumerable<ProjectsDto>> GetProjectListAsync(string customerId)
         {
             int cusId = Convert.ToInt32(customerId);
-            return await _context.TblApplications.Where(s => s.IntCustomerId == cusId)
-                 .GroupBy(app => app.ChrApplicationName)
-                 .Select(g => new ProjectsDto
-                 {
-                     AppId = g.First().IntId,
-                     ApplicationName = g.Key ?? ""
-                 })
-                 .ToListAsync();
+
+            var apps = await _context.TblApplications
+                .Where(s => s.IntCustomerId == cusId)
+                .GroupBy(app => app.ChrApplicationName)
+                .Select(g => new ProjectsDto
+                {
+                    AppId = g.First().IntId,
+                    ApplicationName = g.Key ?? ""
+                })
+                .OrderBy(p => p.ApplicationName)
+                .ToListAsync();
+
+            apps.Insert(0, new ProjectsDto
+            {
+                AppId = 0,
+                ApplicationName = "-- Välj Projekt --"
+            });
+
+            return apps;
         }
 
         public async Task<TaskCountsDto> GetCountsAsync(string customerId)
@@ -417,18 +464,34 @@ namespace TaskList_Server.Service
             if (filters.DeveloperId.HasValue)
                 query = query.Where(t => t.UserId == filters.DeveloperId.Value);
 
-            return await query
+            var data = await query
                 .Select(t => new TasksReportDto
                 {
                     Id = t.TaskId,
                     DeveloperName = t.Users.FirstName ?? "",
-                    TaskName = t.Description ?? "",
+                    TaskName =  t.Description ?? "",
                     StatusName = t.Status.Name,
                     ProjectName = t.Project.ChrApplicationName ?? "",
                     StartDate = t.RegistrationDate,
                     EndDate = t.LastChangeDate
                 })
                 .ToListAsync();
+
+            if (!string.IsNullOrEmpty(filters.TaskName))
+            {
+                data = data.Select(t =>
+                {
+                    t.TaskName = Regex.Replace(
+                        t.TaskName,
+                        Regex.Escape(filters.TaskName),
+                        m => $"<span style='background-color:#E80F0F;'>{m.Value}</span>",
+                        RegexOptions.IgnoreCase
+                    );
+                    return t;
+                }).ToList();
+            }
+
+            return data;
         }
 
         public async Task<TaskFileDto?> GetFileContentAsync(int id)
@@ -449,6 +512,6 @@ namespace TaskList_Server.Service
             };
         }
 
-
+      
     }
 }

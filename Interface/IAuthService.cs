@@ -1,4 +1,5 @@
-﻿using TaskList_Server.Models.DTOs;
+﻿using TaskList_Server.Models;
+using TaskList_Server.Models.DTOs;
 
 namespace TaskList_Server.Interface
 {
@@ -7,5 +8,6 @@ namespace TaskList_Server.Interface
         Task<(bool Success, string Message, object? Data)> LoginAsync(LoginRequest req);
         Task<(bool Success, string Message)> RegisterAsync(RegisterRequest req);
         Task<IEnumerable<permissionDto>> GetAllPermissionsAsync();
+        Task<IEnumerable<User>> getAllUsers();
     }
 }
