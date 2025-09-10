@@ -12,5 +12,4 @@ public partial class TblApplication
     public int? IntCustomerId { get; set; }
 
     public string? ChrApplicationName { get; set; }
-    public string? testColm { get; set; }
 }

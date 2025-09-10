@@ -3,6 +3,9 @@ using TaskList_Server.Models.DTOs;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.RateLimiting;
 using TaskList_Server.Interface;
+using Microsoft.EntityFrameworkCore;
+using TaskList_Server.Models;
+using TaskList_Server.Data;
 
 namespace TaskList_Server.Controllers
 {
@@ -12,10 +15,12 @@ namespace TaskList_Server.Controllers
     public class TasksController : ControllerBase
     {
         private readonly ITaskListService _taskService;
+        private readonly Tasklist25Context _context;
 
-        public TasksController(ITaskListService taskService)
+        public TasksController(ITaskListService taskService, Tasklist25Context context)
         {
             _taskService = taskService;
+            _context = context;
         }
 
         [HttpGet]
@@ -151,6 +156,18 @@ namespace TaskList_Server.Controllers
                 return NotFound();
 
             return Ok(fileDto);
+        }
+
+        [HttpGet("get_allProjects")]
+        public async Task<IEnumerable<TblApplication>> GetAllProjectList()
+        {
+            var apps = await _context.TblApplications.Select(s=> new TblApplication
+            {
+                ChrApplicationName = s.ChrApplicationName,
+                IntId = s.IntId,
+                IntCustomerId =s.IntCustomerId
+            }).ToListAsync();
+            return apps;
         }
     }
 }

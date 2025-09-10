@@ -17,6 +17,7 @@ public partial class User
 
     public string? LastName { get; set; }
 
+    
     public int? Maccess { get; set; }
 
     public string? Email { get; set; }
