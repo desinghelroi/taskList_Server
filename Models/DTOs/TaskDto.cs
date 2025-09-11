@@ -26,6 +26,9 @@
 
         public string ApplicationName { get; set; }
         public int AppId { get; set; }
+        public DateTime? StartDate { get; set; } = DateTime.Now;
+        public string TotalHours { get; set; }
+
         public IFormFile? File { get; set; }
         public List<TaskFileDto> Files { get; set; } = new();
 

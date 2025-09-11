@@ -50,7 +50,9 @@ namespace TaskList_Server.Service
                             PriorityId = p.PriorityId,
                             PriorityName = p.Name,
                             ApplicationName = a.ChrApplicationName ?? "",
-                            AppId = a.IntId
+                            AppId = a.IntId,
+                            StartDate = t.StartDate,
+                            TotalHours = t.TotalHours
                         };
 
             IQueryable<TaskDto> filteredQuery;
@@ -136,7 +138,9 @@ namespace TaskList_Server.Service
                                   PriorityId = p.PriorityId,
                                   PriorityName = p.Name,
                                   ApplicationName = a.ChrApplicationName ?? "",
-                                  AppId = a.IntId
+                                  AppId = a.IntId,
+                                  StartDate = t.StartDate,
+                                  TotalHours = t.TotalHours
                               }).FirstOrDefaultAsync();
 
             if (task != null)
@@ -183,8 +187,14 @@ namespace TaskList_Server.Service
                     PriorityId = dto.PriorityId,
                     ApplicationId = dto.AppId,
                     StatusId = dto.StatusId,
-                    IntDisplayNo = lastNumber + 1
+                    IntDisplayNo = lastNumber + 1,
+                    TotalHours = "",
+                    
                 };
+                if (dto.StatusId == 2) 
+                {
+                    task.StartDate = DateTime.Now; 
+                }
 
                 _context.Tasks.Add(task);
                 await _context.SaveChangesAsync();
@@ -247,6 +257,24 @@ namespace TaskList_Server.Service
                 existingTask.SeriousBug = dto.SeriousBug;
                 existingTask.SmallBug = dto.SmallBug;
                 existingTask.LastChangeDate = DateTime.UtcNow;
+                if (dto.StatusId == 2)
+                {
+                    existingTask.StartDate = DateTime.Now;
+                }
+                else if (dto.StatusId == 3) 
+                {
+                    var endDate = DateTime.Now;
+                    if (existingTask.StartDate != null)
+                    {
+                        var ts = endDate - existingTask.StartDate.Value;
+                        int hours = (int)ts.TotalHours;
+                        int minutes = ts.Minutes;
+                        int seconds = ts.Seconds;
+                        existingTask.TotalHours = $"{hours}:{minutes:D2}:{seconds:D2} hrs";
+                    }
+                }
+
+
 
                 await _context.SaveChangesAsync();
 
