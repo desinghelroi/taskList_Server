@@ -16,58 +16,58 @@ namespace TaskList_Server.Service
 
         public TaskListService(Tasklist25Context context) => _context = context;
 
-        public async Task<PagedResult<TaskDto>> GetTasksAsync(string filter, string search, string status, int page, int pageSize, string customerId, int developerId, int projectId)
+        public async Task<PagedResult<TaskDto>> GetTasksAsync(string filter,string search,string status, int page,int pageSize, string customerId,int developerId,int projectId)
         {
-            var query = from t in _context.Tasks.AsNoTracking()
-                        join c in _context.TblCustomers on t.CustomerId equals c.IntId into cust
-                        from c in cust.DefaultIfEmpty()
-                        join s in _context.Statuses on t.StatusId equals s.StatusId into stat
-                        from s in stat.DefaultIfEmpty()
-                        join p in _context.Priorities on t.PriorityId equals p.PriorityId into pri
-                        from p in pri.DefaultIfEmpty()
-                        join a in _context.TblApplications on t.ApplicationId equals a.IntId into app
-                        from a in app.DefaultIfEmpty()
-                        join u in _context.Users on t.UserId equals u.UserId into user
-                        from us in user.DefaultIfEmpty()
-                        select new TaskDto
-                        {
-                            TaskId = t.TaskId,
-                            IntDisplayNo = t.IntDisplayNo ?? 0,
-                            UserId = t.UserId ?? 0,
-                            UserName = us.FirstName ?? "",
-                            RegistrationDate = t.RegistrationDate ?? DateTime.Now,
-                            LastChangeDate = t.LastChangeDate,
-                            DelegatedTo = "",
-                            Description = t.Description ?? "",
-                            Visible = t.Visible ?? false,
-                            SeriousBug = t.SeriousBug ?? false,
-                            SmallBug = t.SmallBug ?? false,
-                            CustomerId = c.IntId,
-                            CustomerName = c.ChrCustomerName ?? "",
-                            CustomerCode = c.ChrCustomerCode ?? "",
-                            StatusId = s.StatusId,
-                            StatusName = s.Name,
-                            PriorityId = p.PriorityId,
-                            PriorityName = p.Name,
-                            ApplicationName = a.ChrApplicationName ?? "",
-                            AppId = a.IntId,
-                            StartDate = t.StartDate,
-                            TotalHours = t.TotalHours
-                        };
+            var query = _context.Tasks
+                .AsNoTracking()
+                .GroupJoin(_context.TblCustomers, t => t.CustomerId, c => c.IntId, (t, cust) => new { t, cust })
+                .SelectMany(x => x.cust.DefaultIfEmpty(), (x, c) => new { x.t, c })
+                .GroupJoin(_context.Statuses, x => x.t.StatusId, s => s.StatusId, (x, stat) => new { x.t, x.c, stat })
+                .SelectMany(x => x.stat.DefaultIfEmpty(), (x, s) => new { x.t, x.c, s })
+                .GroupJoin(_context.Priorities, x => x.t.PriorityId, p => p.PriorityId, (x, pri) => new { x.t, x.c, x.s, pri })
+                .SelectMany(x => x.pri.DefaultIfEmpty(), (x, p) => new { x.t, x.c, x.s, p })
+                .GroupJoin(_context.TblApplications, x => x.t.ApplicationId, a => a.IntId, (x, app) => new { x.t, x.c, x.s, x.p, app })
+                .SelectMany(x => x.app.DefaultIfEmpty(), (x, a) => new { x.t, x.c, x.s, x.p, a })
+                .GroupJoin(_context.Users, x => x.t.UserId, u => u.UserId, (x, user) => new { x.t, x.c, x.s, x.p, x.a, user })
+                .SelectMany(x => x.user.DefaultIfEmpty(), (x, us) => new TaskDto
+                {
+                    TaskId = x.t.TaskId,
+                    IntDisplayNo = x.t.IntDisplayNo ?? 0,
+                    UserId = x.t.UserId ?? 0,
+                    UserName = us.FirstName ?? "",
+                    RegistrationDate = x.t.RegistrationDate ?? DateTime.Now,
+                    LastChangeDate = x.t.LastChangeDate,
+                    DelegatedTo = "",
+                    Description = x.t.Description ?? "",
+                    Visible = x.t.Visible ?? false,
+                    SeriousBug = x.t.SeriousBug ?? false,
+                    SmallBug = x.t.SmallBug ?? false,
+                    CustomerId = x.c.IntId,
+                    CustomerName = x.c.ChrCustomerName ?? "",
+                    CustomerCode = x.c.ChrCustomerCode ?? "",
+                    StatusId = x.s.StatusId,
+                    StatusName = x.s.Name,
+                    PriorityId = x.p.PriorityId,
+                    PriorityName = x.p.Name,
+                    ApplicationName = x.a.ChrApplicationName ?? "",
+                    AppId = x.a.IntId,
+                    StartDate = x.t.StartDate,
+                    TotalHours = x.t.TotalHours
+                });
 
-            IQueryable<TaskDto> filteredQuery;
-            if (filter.Equals("true", StringComparison.OrdinalIgnoreCase))
-                filteredQuery = query.Where(s => s.Visible == true && s.CustomerId == Convert.ToInt32(customerId) && s.StatusId < 6);
-            else
-                filteredQuery = query.Where(s => s.Visible == false && s.CustomerId == Convert.ToInt32(customerId) && s.StatusId < 6);
+            var filteredQuery = query
+                .Where(s => s.CustomerId == Convert.ToInt32(customerId) && s.StatusId < 6)
+                .Where(s => filter.Equals("true", StringComparison.OrdinalIgnoreCase) ? s.Visible : !s.Visible);
 
             if (!string.IsNullOrEmpty(search))
-                filteredQuery = query.Where(s => s.Description.Contains(search));
+                filteredQuery = filteredQuery.Where(s => s.Description.Contains(search));
 
             if (!string.IsNullOrEmpty(status))
-                filteredQuery = query.Where(s => s.Visible && s.StatusName.Contains(status));
+                filteredQuery = filteredQuery.Where(s => s.Visible && s.StatusName.Contains(status));
+
             if (developerId != 0)
                 filteredQuery = filteredQuery.Where(s => s.Visible && s.UserId == developerId);
+
             if (projectId != 0)
                 filteredQuery = filteredQuery.Where(s => s.Visible && s.AppId == projectId);
 
@@ -88,7 +88,7 @@ namespace TaskList_Server.Service
                         Regex.Escape(search),
                         m => $"<span style='background-color:#E80F0F;'>{m.Value}</span>",
                         RegexOptions.IgnoreCase
-                    ); 
+                    );
                     return t;
                 }).ToList();
             }
@@ -103,45 +103,47 @@ namespace TaskList_Server.Service
             };
         }
 
+
         public async Task<TaskDto?> GetTaskByIdAsync(int id)
         {
-            var task = await (from t in _context.Tasks.AsNoTracking()
-                              join c in _context.TblCustomers on t.CustomerId equals c.IntId into cust
-                              from c in cust.DefaultIfEmpty()
-                              join s in _context.Statuses on t.StatusId equals s.StatusId into stat
-                              from s in stat.DefaultIfEmpty()
-                              join p in _context.Priorities on t.PriorityId equals p.PriorityId into pri
-                              from p in pri.DefaultIfEmpty()
-                              join a in _context.TblApplications on t.ApplicationId equals a.IntId into app
-                              from a in app.DefaultIfEmpty()
-                              join u in _context.Users on t.UserId equals u.UserId into user
-                              from us in user.DefaultIfEmpty()
-                              where t.TaskId == id
-                              select new TaskDto
-                              {
-                                  TaskId = t.TaskId,
-                                  IntDisplayNo = t.IntDisplayNo ?? 0,
-                                  UserId = t.UserId ?? 0,
-                                  UserName = us.FirstName ?? "",
-                                  RegistrationDate = t.RegistrationDate ?? DateTime.Now,
-                                  LastChangeDate = t.LastChangeDate,
-                                  DelegatedTo = "",
-                                  Description = t.Description ?? "",
-                                  Visible = t.Visible ?? false,
-                                  SeriousBug = t.SeriousBug ?? false,
-                                  SmallBug = t.SmallBug ?? false,
-                                  CustomerId = c.IntId,
-                                  CustomerName = c.ChrCustomerName ?? "",
-                                  CustomerCode = c.ChrCustomerCode ?? "",
-                                  StatusId = s.StatusId,
-                                  StatusName = s.Name,
-                                  PriorityId = p.PriorityId,
-                                  PriorityName = p.Name,
-                                  ApplicationName = a.ChrApplicationName ?? "",
-                                  AppId = a.IntId,
-                                  StartDate = t.StartDate,
-                                  TotalHours = t.TotalHours
-                              }).FirstOrDefaultAsync();
+            var task = await _context.Tasks.AsNoTracking().Where(t => t.TaskId == id)
+                            .GroupJoin(_context.TblCustomers, t => t.CustomerId, c => c.IntId, (t, cust) => new { t, cust })
+                            .SelectMany(x => x.cust.DefaultIfEmpty(), (x, c) => new { x.t, c })
+                            .GroupJoin(_context.Statuses, x => x.t.StatusId, s => s.StatusId, (x, stat) => new { x, stat })
+                            .SelectMany(x => x.stat.DefaultIfEmpty(), (x, s) => new { x.x.t, x.x.c, s })
+                            .GroupJoin(_context.Priorities, x => x.t.PriorityId, p => p.PriorityId, (x, pri) => new { x, pri })
+                            .SelectMany(x => x.pri.DefaultIfEmpty(), (x, p) => new { x.x.t, x.x.c, x.x.s, p })
+                            .GroupJoin(_context.TblApplications, x => x.t.ApplicationId, a => a.IntId, (x, app) => new { x, app })
+                            .SelectMany(x => x.app.DefaultIfEmpty(), (x, a) => new { x.x.t, x.x.c, x.x.s, x.x.p, a })
+                            .GroupJoin(_context.Users, x => x.t.UserId, u => u.UserId, (x, user) => new { x, user })
+                            .SelectMany(x => x.user.DefaultIfEmpty(), (x, us) => new { x.x.t, x.x.c, x.x.s, x.x.p, x.x.a, us })
+                            .Select(x => new TaskDto
+                            {
+                                TaskId = x.t.TaskId,
+                                IntDisplayNo = x.t.IntDisplayNo ?? 0,
+                                UserId = x.t.UserId ?? 0,
+                                UserName = x.us.FirstName ?? "",
+                                RegistrationDate = x.t.RegistrationDate ?? DateTime.Now,
+                                LastChangeDate = x.t.LastChangeDate,
+                                DelegatedTo = "",
+                                Description = x.t.Description ?? "",
+                                Visible = x.t.Visible ?? false,
+                                SeriousBug = x.t.SeriousBug ?? false,
+                                SmallBug = x.t.SmallBug ?? false,
+                                CustomerId = x.c.IntId,
+                                CustomerName = x.c.ChrCustomerName ?? "",
+                                CustomerCode = x.c.ChrCustomerCode ?? "",
+                                StatusId = x.s.StatusId,
+                                StatusName = x.s.Name,
+                                PriorityId = x.p.PriorityId,
+                                PriorityName = x.p.Name,
+                                ApplicationName = x.a.ChrApplicationName ?? "",
+                                AppId = x.a.IntId,
+                                StartDate = x.t.StartDate,
+                                TotalHours = x.t.TotalHours
+                            })
+                            .FirstOrDefaultAsync();
+
 
             if (task != null)
             {
@@ -240,80 +242,73 @@ namespace TaskList_Server.Service
 
         public async Task<(bool Success, string Message)> UpdateTaskAsync(int id, TaskDto dto)
         {
-            using var transaction = await _context.Database.BeginTransactionAsync();
-
             try
             {
-                var existingTask = await _context.Tasks.FindAsync(id);
-                if (existingTask == null)
+                var affected = await _context.Tasks.Where(t => t.TaskId == id).ExecuteUpdateAsync(t => t
+                        .SetProperty(task => task.Description, task => dto.Description)
+                        .SetProperty(task => task.StatusId, task => dto.StatusId)
+                        .SetProperty(task => task.ApplicationId, task => dto.AppId)
+                        .SetProperty(task => task.PriorityId, task => dto.PriorityId)
+                        .SetProperty(task => task.UserId, task => dto.UserId)
+                        .SetProperty(task => task.Visible, task => dto.Visible)
+                        .SetProperty(task => task.SeriousBug, task => dto.SeriousBug)
+                        .SetProperty(task => task.SmallBug, task => dto.SmallBug)
+                        .SetProperty(task => task.LastChangeDate, task => DateTime.UtcNow)
+                        .SetProperty(task => task.StartDate, task => dto.StatusId == 2 ? DateTime.Now : task.StartDate)
+                    );
+
+                if (affected == 0)
                     return (false, "Task not found");
 
-                existingTask.Description = dto.Description;
-                existingTask.StatusId = dto.StatusId;
-                existingTask.ApplicationId = dto.AppId;
-                existingTask.PriorityId = dto.PriorityId;
-                existingTask.UserId = dto.UserId;
-                existingTask.Visible = dto.Visible;
-                existingTask.SeriousBug = dto.SeriousBug;
-                existingTask.SmallBug = dto.SmallBug;
-                existingTask.LastChangeDate = DateTime.UtcNow;
-                if (dto.StatusId == 2)
+                if (dto.StatusId == 3)
                 {
-                    existingTask.StartDate = DateTime.Now;
-                }
-                else if (dto.StatusId == 3) 
-                {
-                    var endDate = DateTime.Now;
-                    if (existingTask.StartDate != null)
+                    var taskData = await _context.Tasks
+                        .Where(t => t.TaskId == id)
+                        .Select(t => new { t.StartDate })
+                        .FirstOrDefaultAsync();
+
+                    if (taskData?.StartDate != null)
                     {
-                        var ts = endDate - existingTask.StartDate.Value;
-                        int hours = (int)ts.TotalHours;
-                        int minutes = ts.Minutes;
-                        int seconds = ts.Seconds;
-                        existingTask.TotalHours = $"{hours}:{minutes:D2}:{seconds:D2} hrs";
+                        var ts = DateTime.Now - taskData.StartDate.Value;
+                        var totalHours = $"{(int)ts.TotalHours}:{ts.Minutes:D2}:{ts.Seconds:D2} hrs";
+
+                        await _context.Tasks
+                            .Where(t => t.TaskId == id)
+                            .ExecuteUpdateAsync(t => t.SetProperty(task => task.TotalHours, task => totalHours));
                     }
                 }
-
-
-
-                await _context.SaveChangesAsync();
 
                 if (dto.File != null && dto.File.Length > 0)
                 {
                     var uploadsFolder = Path.Combine(Directory.GetCurrentDirectory(), "Uploads");
                     if (!Directory.Exists(uploadsFolder))
-                    {
                         Directory.CreateDirectory(uploadsFolder);
-                    }
 
                     var uniqueFileName = $"{Guid.NewGuid()}_{Path.GetFileName(dto.File.FileName)}";
                     var filePath = Path.Combine(uploadsFolder, uniqueFileName);
 
-                    using (var stream = new FileStream(filePath, FileMode.Create))
-                    {
-                        await dto.File.CopyToAsync(stream);
-                    }
+                    await using var stream = new FileStream(filePath, FileMode.Create);
+                    await dto.File.CopyToAsync(stream);
 
                     var fileUpload = new TblUploadedFile
                     {
                         ChrOriginalFileName = dto.File.FileName,
                         ChrSavedFileName = uniqueFileName,
-                        IntTaskId = existingTask.TaskId
+                        IntTaskId = id
                     };
 
                     _context.TblUploadedFiles.Add(fileUpload);
                     await _context.SaveChangesAsync();
                 }
 
-                await transaction.CommitAsync();
                 return (true, "Task updated successfully");
             }
             catch (Exception ex)
             {
-                await transaction.RollbackAsync();
                 return (false, $"Error updating task: {ex.Message}");
             }
         }
+
 
         public async Task<(bool Success, string Message)> DeleteTaskAsync(int id)
         {

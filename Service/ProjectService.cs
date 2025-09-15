@@ -17,7 +17,7 @@ namespace TaskList_Server.Service
 
         public async Task<IEnumerable<TblApplication>> GetAllProjectsAsync()
         {
-            return await _context.TblApplications
+            return await _context.TblApplications.OrderByDescending(s=>s.IntId)
                 .Select(s => new TblApplication
                 {
                     IntId = s.IntId,
@@ -29,12 +29,19 @@ namespace TaskList_Server.Service
 
         public async Task<TblApplication> CreateProjectAsync(TblApplication app, string? customerId)
         {
-            if (!string.IsNullOrEmpty(customerId))
-                app.IntCustomerId = Convert.ToInt32(customerId);
+            try
+            {
+                if (!string.IsNullOrEmpty(customerId))
+                    app.IntCustomerId = Convert.ToInt32(customerId);
 
-            _context.TblApplications.Add(app);
-            await _context.SaveChangesAsync();
-            return app;
+                _context.TblApplications.Add(app);
+                await _context.SaveChangesAsync();
+                return app;
+            }
+            catch (Exception ex)
+            {
+                throw ex.InnerException;
+            }
         }
 
         public async Task<TblApplication?> UpdateProjectAsync(int id, TblApplication app, string? customerId)
