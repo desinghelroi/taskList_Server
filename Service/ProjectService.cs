@@ -6,36 +6,21 @@ using TaskList_Server.Models.DTOs;
 
 namespace TaskList_Server.Service
 {
-    public class ProjectService : IProjectService
+    public class ProjectService(Tasklist25Context context) : IProjectService
     {
-        private readonly Tasklist25Context _context;
+        private readonly Tasklist25Context _context = context;
 
-        public ProjectService(Tasklist25Context context)
+        public async Task<IEnumerable<TblApplication>> GetAllProjectsAsync() => await _context.TblApplications.OrderByDescending(s => s.IntId).Select(s => new TblApplication
+        { IntId = s.IntId, ChrApplicationName = s.ChrApplicationName, IntCustomerId = s.IntCustomerId }).ToListAsync();
+
+        public async Task<TblApplication> CreateProjectAsync(TblApplication app, string? customerId) => await System.Threading.Tasks.Task.Run(async () =>
         {
-            _context = context;
-        }
-
-        public async Task<IEnumerable<TblApplication>> GetAllProjectsAsync()
-        {
-            return await _context.TblApplications
-                .Select(s => new TblApplication
-                {
-                    IntId = s.IntId,
-                    ChrApplicationName = s.ChrApplicationName,
-                    IntCustomerId = s.IntCustomerId
-                })
-                .ToListAsync();
-        }
-
-        public async Task<TblApplication> CreateProjectAsync(TblApplication app, string? customerId)
-        {
-            if (!string.IsNullOrEmpty(customerId))
-                app.IntCustomerId = Convert.ToInt32(customerId);
-
+            if (!string.IsNullOrEmpty(customerId)) app.IntCustomerId = Convert.ToInt32(customerId);
             _context.TblApplications.Add(app);
             await _context.SaveChangesAsync();
             return app;
-        }
+        });
+
 
         public async Task<TblApplication?> UpdateProjectAsync(int id, TblApplication app, string? customerId)
         {
@@ -54,17 +39,7 @@ namespace TaskList_Server.Service
             return existing;
         }
 
-        public async Task<bool> DeleteProjectAsync(int id)
-        {
-            var project = await _context.TblApplications.FindAsync(id);
-            if (project == null) return false;
-
-            _context.TblApplications.Remove(project);
-            await _context.SaveChangesAsync();
-            return true;
-        }
-
-
+        public async Task<bool> DeleteProjectAsync(int id) => await _context.TblApplications.FindAsync(id) is var project && project is not null ? (_context.TblApplications.Remove(project), await _context.SaveChangesAsync(), true).Item3 : false;
 
         public async Task<IEnumerable<EmployeeTaskStatsDto>> GetEmployeeTaskStatsAsync(DateTime fromDate, DateTime toDate)
         {
@@ -85,8 +60,5 @@ namespace TaskList_Server.Service
 
             return data;
         }
-
-
-
     }
 }

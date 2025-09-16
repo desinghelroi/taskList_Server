@@ -3,22 +3,15 @@ using TaskList_Server.Models.DTOs;
 using TaskList_Server.Interface;
 using TaskList_Server.Models;
 using TaskList_Server.Data;
-using Microsoft.EntityFrameworkCore;
 
 namespace TaskList_Server.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    public class AuthController : ControllerBase
+    public class AuthController(IAuthService authService, Tasklist25Context context) : ControllerBase
     {
-        private readonly IAuthService _authService;
-        private readonly Tasklist25Context _context;
-
-        public AuthController(IAuthService authService, Tasklist25Context context)
-        {
-            _authService = authService;
-            _context = context;
-        }
+        private readonly IAuthService _authService = authService;
+        private readonly Tasklist25Context _context = context;
 
         [HttpPost("login")]
         public async Task<IActionResult> Login([FromBody] LoginRequest req)
@@ -31,52 +24,18 @@ namespace TaskList_Server.Controllers
         }
 
         [HttpPost("register")]
-        public async Task<IActionResult> Register([FromBody] RegisterRequest req)
-        {
-            var result = await _authService.RegisterAsync(req);
-            if (!result.Success)
-                return BadRequest(new { message = result.Message });
-
-            return Ok(new { message = result.Message });
-        }
+        public async Task<IActionResult> Register([FromBody] RegisterRequest req) => await _authService.RegisterAsync(req) is var result && result.Success ? Ok(new { message = result.Message }) : BadRequest(new { message = result.Message });
 
         [HttpGet("all")]
-        public async Task<IActionResult> GetAllPermissions()
-        {
-            var permissions = await _authService.GetAllPermissionsAsync();
-            return Ok(permissions);
-        }
+        public async Task<IActionResult> GetAllPermissions() => Ok(await _authService.GetAllPermissionsAsync());
 
         [HttpGet("get_AllUsers")]
-        public async Task<IActionResult> GetAllUsers()
-        {
-            var users = await _authService.getAllUsers();
-            return Ok(users);
-        }
+        public async Task<IActionResult> GetAllUsers() => Ok(await _authService.getAllUsers());
 
         [HttpGet("get_userById/{id}")]
-        public async Task<ActionResult<User>> GetUserById(int id)
-        {
-            var user = await _context.Users.FindAsync(id);
-
-            if (user == null)
-                return NotFound();
-
-            return Ok(user);
-        }
-
+        public async Task<ActionResult<User>> GetUserById(int id) => await _context.Users.FindAsync(id) is var user && user is not null ? Ok(user) : NotFound();
         [HttpDelete("deleteusers/{id}")]
-        public async Task<ActionResult> DeleteUser(int id)
-        {
-            var user = await _context.Users.FindAsync(id);
-            if (user == null)
-                return NotFound();
-
-            _context.Users.Remove(user);
-            await _context.SaveChangesAsync();
-
-            return NoContent();
-        }
+        public async Task<ActionResult> DeleteUser(int id) => await _context.Users.FindAsync(id) is var user && user is not null ? (_context.Users.Remove(user), await _context.SaveChangesAsync(), NoContent()).Item3 : NotFound();
 
 
         [HttpPut("updateusers/{id}")]
