@@ -16,7 +16,7 @@ namespace TaskList_Server.Service
 
         public TaskListService(Tasklist25Context context) => _context = context;
 
-        public async Task<PagedResult<TaskDto>> GetTasksAsync(string filter,string search,string status, int page,int pageSize, string customerId,int developerId,int projectId)
+        public async Task<PagedResult<TaskDto>> GetTasksAsync(string filter, string search, string status, int page, int pageSize, string customerId, int developerId, int projectId)
         {
             var query = _context.Tasks
                 .AsNoTracking()
