@@ -260,31 +260,31 @@ namespace TaskList_Server.Service
                 if (affected == 0)
                     return (false, "Task not found");
 
-                existingTask.Description = dto.Description;
-                existingTask.StatusId = dto.StatusId;
-                existingTask.ApplicationId = dto.AppId;
-                existingTask.PriorityId = dto.PriorityId;
-                existingTask.UserId = dto.UserId;
-                existingTask.Visible = dto.Visible;
-                existingTask.SeriousBug = dto.SeriousBug;
-                existingTask.SmallBug = dto.SmallBug;
-                existingTask.LastChangeDate = DateTime.UtcNow;
-                if (dto.StatusId == 2)
-                {
-                    existingTask.StartDate = DateTime.Now;
-                }
-                else if (dto.StatusId == 3) 
-                {
-                    var endDate = DateTime.Now;
-                    if (existingTask.StartDate != null)
-                    {
-                        var ts = endDate - existingTask.StartDate.Value;
-                        int hours = (int)ts.TotalHours;
-                        int minutes = ts.Minutes;
-                        int seconds = ts.Seconds;
-                        existingTask.TotalHours = $"{hours}:{minutes:D2}:{seconds:D2} hrs";
-                    }
-                }
+                //existingTask.Description = dto.Description;
+                //existingTask.StatusId = dto.StatusId;
+                //existingTask.ApplicationId = dto.AppId;
+                //existingTask.PriorityId = dto.PriorityId;
+                //existingTask.UserId = dto.UserId;
+                //existingTask.Visible = dto.Visible;
+                //existingTask.SeriousBug = dto.SeriousBug;
+                //existingTask.SmallBug = dto.SmallBug;
+                //existingTask.LastChangeDate = DateTime.UtcNow;
+                //if (dto.StatusId == 2)
+                //{
+                //    existingTask.StartDate = DateTime.Now;
+                //}
+                //else if (dto.StatusId == 3) 
+                //{
+                //    var endDate = DateTime.Now;
+                //    if (existingTask.StartDate != null)
+                //    {
+                //        var ts = endDate - existingTask.StartDate.Value;
+                //        int hours = (int)ts.TotalHours;
+                //        int minutes = ts.Minutes;
+                //        int seconds = ts.Seconds;
+                //        existingTask.TotalHours = $"{hours}:{minutes:D2}:{seconds:D2} hrs";
+                //    }
+                //}
 
 
                 //    if (taskData?.StartDate != null)
