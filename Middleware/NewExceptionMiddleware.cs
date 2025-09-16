@@ -19,7 +19,10 @@ namespace TaskList_Server.Middleware
         {
             try
             {
-                await _next(httpContext); // call the next middleware
+                Console.WriteLine("Middleware request" + httpContext.Request.Path);
+                await _next(httpContext);
+                Console.WriteLine("Finished Middleware handling request.");
+
             }
             catch (Exception ex)
             {
@@ -37,7 +40,7 @@ namespace TaskList_Server.Middleware
             {
                 StatusCode = context.Response.StatusCode,
                 Message = "Internal Server Error. Please try again later.",
-                Detailed = ex.Message // ⚠️ in prod, hide details
+                Detailed = ex.Message 
             }.ToString()!);
         }
     }

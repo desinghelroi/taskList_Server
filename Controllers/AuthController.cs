@@ -14,7 +14,14 @@ namespace TaskList_Server.Controllers
         private readonly Tasklist25Context _context = context;
 
         [HttpPost("login")]
-        public async Task<IActionResult> Login([FromBody] LoginRequest req) => await _authService.LoginAsync(req) is var result && result.Success ? Ok(await _authService.LoginAsync(req)) : Unauthorized(new { message = result.Message });
+        public async Task<IActionResult> Login([FromBody] LoginRequest req)
+        {
+            var result = await _authService.LoginAsync(req);
+            if (!result.Success)
+                return Unauthorized(new { message = result.Message });
+
+            return Ok(result.Data);
+        }
 
         [HttpPost("register")]
         public async Task<IActionResult> Register([FromBody] RegisterRequest req) => await _authService.RegisterAsync(req) is var result && result.Success ? Ok(new { message = result.Message }) : BadRequest(new { message = result.Message });

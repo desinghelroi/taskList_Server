@@ -95,61 +95,61 @@ builder.Services.AddCors(options =>
 
 #region swagger 
 //builder.Services.AddSwaggerGen();
-builder.Services.AddSwaggerGen(c =>
-{
-    c.SwaggerDoc("v1", new OpenApiInfo
-    {
-        Title = "Tasklist API",
-        Version = "v1",
-        Description = "API for task management with JWT authentication"
-    });
-
-    c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
-    {
-        Name = "Authorization",
-        Type = SecuritySchemeType.ApiKey,
-        Scheme = "Bearer",
-        In = ParameterLocation.Header,
-        Description = "Enter 'Bearer {token}'"
-    });
-
-    c.AddSecurityRequirement(new OpenApiSecurityRequirement
-    {
-        {
-            new OpenApiSecurityScheme
-            {
-                Reference = new OpenApiReference { Type = ReferenceType.SecurityScheme, Id = "Bearer" }
-            },
-            new string[] { }
-        }
-    });
-});
-//builder.Services.AddSwaggerGen(options =>
+//builder.Services.AddSwaggerGen(c =>
 //{
-//    options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+//    c.SwaggerDoc("v1", new OpenApiInfo
 //    {
-//        In = ParameterLocation.Header,
-//        Description = "Please enter a valid token",
-//        Name = "Authorization",
-//        Type = SecuritySchemeType.Http,
-//        BearerFormat = "JWT",
-//        Scheme = "Bearer"
+//        Title = "Tasklist API",
+//        Version = "v1",
+//        Description = "API for task management with JWT authentication"
 //    });
-//    options.AddSecurityRequirement(new OpenApiSecurityRequirement
+
+//    c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+//    {
+//        Name = "Authorization",
+//        Type = SecuritySchemeType.ApiKey,
+//        Scheme = "Bearer",
+//        In = ParameterLocation.Header,
+//        Description = "Enter 'Bearer {token}'"
+//    });
+
+//    c.AddSecurityRequirement(new OpenApiSecurityRequirement
 //    {
 //        {
 //            new OpenApiSecurityScheme
 //            {
-//                Reference = new OpenApiReference
-//                {
-//                    Type=ReferenceType.SecurityScheme,
-//                    Id="Bearer"
-//                }
+//                Reference = new OpenApiReference { Type = ReferenceType.SecurityScheme, Id = "Bearer" }
 //            },
-//            new string[]{}
+//            new string[] { }
 //        }
 //    });
 //});
+builder.Services.AddSwaggerGen(options =>
+{
+    options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+    {
+        In = ParameterLocation.Header,
+        Description = "Please enter a valid token",
+        Name = "Authorization",
+        Type = SecuritySchemeType.Http,
+        BearerFormat = "JWT",
+        Scheme = "Bearer"
+    });
+    options.AddSecurityRequirement(new OpenApiSecurityRequirement
+    {
+        {
+            new OpenApiSecurityScheme
+            {
+                Reference = new OpenApiReference
+                {
+                    Type=ReferenceType.SecurityScheme,
+                    Id="Bearer"
+                }
+            },
+            new string[]{}
+        }
+    });
+});
 #endregion
 
 var app = builder.Build();

@@ -36,8 +36,8 @@ public partial class Task
 
     public bool? SmallBug { get; set; }
 
-    public DateTime? StartDate { get; set; }
-    public string TotalHours { get; set; }
+    //public DateTime? StartDate { get; set; }
+    //public string TotalHours { get; set; }
 
     [ForeignKey("StatusId")]
     public virtual Status Status { get; set; }

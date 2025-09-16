@@ -51,8 +51,8 @@ namespace TaskList_Server.Service
                     PriorityName = x.p.Name,
                     ApplicationName = x.a.ChrApplicationName ?? "",
                     AppId = x.a.IntId,
-                    StartDate = x.t.StartDate,
-                    TotalHours = x.t.TotalHours
+                    //StartDate = x.t.StartDate,
+                    //TotalHours = x.t.TotalHours
                 });
 
             var filteredQuery = query
@@ -139,8 +139,8 @@ namespace TaskList_Server.Service
                                 PriorityName = x.p.Name,
                                 ApplicationName = x.a.ChrApplicationName ?? "",
                                 AppId = x.a.IntId,
-                                StartDate = x.t.StartDate,
-                                TotalHours = x.t.TotalHours
+                                //StartDate = x.t.StartDate,
+                                //TotalHours = x.t.TotalHours
                             })
                             .FirstOrDefaultAsync();
 
@@ -190,13 +190,13 @@ namespace TaskList_Server.Service
                     ApplicationId = dto.AppId,
                     StatusId = dto.StatusId,
                     IntDisplayNo = lastNumber + 1,
-                    TotalHours = "",
+                    //TotalHours = "",
                     
                 };
-                if (dto.StatusId == 2) 
-                {
-                    task.StartDate = DateTime.Now; 
-                }
+                //if (dto.StatusId == 2) 
+                //{
+                //    task.StartDate = DateTime.Now; 
+                //}
 
                 _context.Tasks.Add(task);
                 await _context.SaveChangesAsync();
@@ -254,29 +254,29 @@ namespace TaskList_Server.Service
                         .SetProperty(task => task.SeriousBug, task => dto.SeriousBug)
                         .SetProperty(task => task.SmallBug, task => dto.SmallBug)
                         .SetProperty(task => task.LastChangeDate, task => DateTime.UtcNow)
-                        .SetProperty(task => task.StartDate, task => dto.StatusId == 2 ? DateTime.Now : task.StartDate)
+                        //.SetProperty(task => task.StartDate, task => dto.StatusId == 2 ? DateTime.Now : task.StartDate)
                     );
 
                 if (affected == 0)
                     return (false, "Task not found");
 
-                if (dto.StatusId == 3)
-                {
-                    var taskData = await _context.Tasks
-                        .Where(t => t.TaskId == id)
-                        .Select(t => new { t.StartDate })
-                        .FirstOrDefaultAsync();
+                //if (dto.StatusId == 3)
+                //{
+                //    var taskData = await _context.Tasks
+                //        .Where(t => t.TaskId == id)
+                //        .Select(t => new { t.StartDate })
+                //        .FirstOrDefaultAsync();
 
-                    if (taskData?.StartDate != null)
-                    {
-                        var ts = DateTime.Now - taskData.StartDate.Value;
-                        var totalHours = $"{(int)ts.TotalHours}:{ts.Minutes:D2}:{ts.Seconds:D2} hrs";
+                //    if (taskData?.StartDate != null)
+                //    {
+                //        var ts = DateTime.Now - taskData.StartDate.Value;
+                //        var totalHours = $"{(int)ts.TotalHours}:{ts.Minutes:D2}:{ts.Seconds:D2} hrs";
 
-                        await _context.Tasks
-                            .Where(t => t.TaskId == id)
-                            .ExecuteUpdateAsync(t => t.SetProperty(task => task.TotalHours, task => totalHours));
-                    }
-                }
+                //        await _context.Tasks
+                //            .Where(t => t.TaskId == id)
+                //            .ExecuteUpdateAsync(t => t.SetProperty(task => task.TotalHours, task => totalHours));
+                //    }
+                //}
 
                 if (dto.File != null && dto.File.Length > 0)
                 {
