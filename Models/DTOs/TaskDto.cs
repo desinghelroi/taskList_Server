@@ -13,25 +13,19 @@
         public bool Visible { get; set; }
         public bool SeriousBug { get; set; }
         public bool SmallBug { get; set; }
-
         public int CustomerId { get; set; }
         public string CustomerName { get; set; }
         public string CustomerCode { get; set; }
-
         public int StatusId { get; set; }
         public string StatusName { get; set; }
-
         public int PriorityId { get; set; }
         public string PriorityName { get; set; }
-
         public string ApplicationName { get; set; }
         public int AppId { get; set; }
         public DateTime? StartDate { get; set; } = DateTime.Now;
         public string TotalHours { get; set; }
-
         public IFormFile? File { get; set; }
         public List<TaskFileDto> Files { get; set; } = new();
-
     }
 
     public class TaskFileDto
