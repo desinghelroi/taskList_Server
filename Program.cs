@@ -8,6 +8,7 @@ using TaskList_Server.Data;
 using System.Threading.RateLimiting;
 using TaskList_Server.Interface;
 using TaskList_Server.Service;
+using TaskList_Server.Middleware;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -94,43 +95,67 @@ builder.Services.AddCors(options =>
 
 #region swagger 
 //builder.Services.AddSwaggerGen();
-builder.Services.AddSwaggerGen(c =>
+//builder.Services.AddSwaggerGen(c =>
+//{
+//    c.SwaggerDoc("v1", new OpenApiInfo
+//    {
+//        Title = "Tasklist API",
+//        Version = "v1",
+//        Description = "API for task management with JWT authentication"
+//    });
+
+//    c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+//    {
+//        Name = "Authorization",
+//        Type = SecuritySchemeType.ApiKey,
+//        Scheme = "Bearer",
+//        In = ParameterLocation.Header,
+//        Description = "Enter 'Bearer {token}'"
+//    });
+
+//    c.AddSecurityRequirement(new OpenApiSecurityRequirement
+//    {
+//        {
+//            new OpenApiSecurityScheme
+//            {
+//                Reference = new OpenApiReference { Type = ReferenceType.SecurityScheme, Id = "Bearer" }
+//            },
+//            new string[] { }
+//        }
+//    });
+//});
+builder.Services.AddSwaggerGen(options =>
 {
-    c.SwaggerDoc("v1", new OpenApiInfo
+    options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {
-        Title = "Tasklist API",
-        Version = "v1",
-        Description = "API for task management with JWT authentication"
-    });
-
-    c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
-    {
-        Name = "Authorization",
-        Type = SecuritySchemeType.ApiKey,
-        Scheme = "Bearer",
         In = ParameterLocation.Header,
-        Description = "Enter 'Bearer {token}'"
+        Description = "Please enter a valid token",
+        Name = "Authorization",
+        Type = SecuritySchemeType.Http,
+        BearerFormat = "JWT",
+        Scheme = "Bearer"
     });
-
-    c.AddSecurityRequirement(new OpenApiSecurityRequirement
+    options.AddSecurityRequirement(new OpenApiSecurityRequirement
     {
         {
             new OpenApiSecurityScheme
             {
-                Reference = new OpenApiReference { Type = ReferenceType.SecurityScheme, Id = "Bearer" }
+                Reference = new OpenApiReference
+                {
+                    Type=ReferenceType.SecurityScheme,
+                    Id="Bearer"
+                }
             },
-            new string[] { }
+            new string[]{}
         }
     });
 });
-
 #endregion
 
 var app = builder.Build();
 
+app.UseMiddleware<NewExceptionMiddleware>();
 app.UseRateLimiter();
-
-
 app.UseSwagger();
 app.UseSwaggerUI(c =>
 {

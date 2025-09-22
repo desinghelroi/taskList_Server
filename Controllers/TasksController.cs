@@ -3,209 +3,76 @@ using TaskList_Server.Models.DTOs;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.RateLimiting;
 using TaskList_Server.Interface;
-using Microsoft.EntityFrameworkCore;
 using TaskList_Server.Models;
-using TaskList_Server.Data;
-using TaskList_Server.Service;
-
 namespace TaskList_Server.Controllers
 {
     [Authorize]
     [Route("api/[controller]")]
     [ApiController]
-    public class TasksController : ControllerBase
+    public class TasksController(ITaskListService taskService, IProjectService projectService) : ControllerBase
     {
-        private readonly ITaskListService _taskService;
-        private readonly IProjectService _projectService;
-
-
-        public TasksController(ITaskListService taskService, IProjectService projectService)
-        {
-            _taskService = taskService;
-            _projectService = projectService;
-        }
+        private readonly ITaskListService _taskService = taskService;
+        private readonly IProjectService _projectService = projectService;
 
         [HttpGet]
         [EnableRateLimiting("GeneralLimiter")]
-
-        public async Task<ActionResult<object>> GetTasks(int page = 1, int pageSize = 20, string filter = "true", string search = "", string staus = "", int developerId = 0, int projectId=0)
-        {
-            var customerId = User.FindFirst("customerId")?.Value;
-            if (string.IsNullOrEmpty(customerId)) return BadRequest();
-            var result = await _taskService.GetTasksAsync(filter, search, staus, page, pageSize, customerId,developerId,projectId);
-            return Ok(result);
-        }
+        public async Task<ActionResult<object>> GetTasks(int page = 1, int pageSize = 20, string filter = "true", string search = "", string staus = "", int developerId = 0, int projectId = 0) => User.FindFirst("customerId")?.Value is string customerId && !string.IsNullOrEmpty(customerId) ? Ok(await _taskService.GetTasksAsync(filter, search, staus, page, pageSize, customerId, developerId, projectId)) : BadRequest();
 
         [HttpGet("{id}")]
-        public async Task<IActionResult> GetTaskById(int id)
-        {
-            try
-            {
-                var task = await _taskService.GetTaskByIdAsync(id);
-                if (task == null)
-                    return NotFound();
-
-                return Ok(task);
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, $"Internal server error: {ex.Message}");
-            }
-        }
+        public async Task<IActionResult> GetTaskById(int id) => await _taskService.GetTaskByIdAsync(id) is var task && task != null ? Ok(task) : NotFound();
 
         [HttpPost]
         [Consumes("multipart/form-data")]
         [EnableRateLimiting("WriteLimiter")]
-        public async Task<IActionResult> CreateTask([FromForm] CreateTaskDto dto)
-        {
-            var customerId = Convert.ToInt32(User.FindFirst("customerId")?.Value);
-            var result = await _taskService.CreateTaskAsync(dto, customerId);
-            if (result.Success)
-                return Ok(new { message = result.Message, taskId = result.TaskId });
-            return StatusCode(500, new { message = result.Message });
-        }
-
+        public async Task<IActionResult> CreateTask([FromForm] CreateTaskDto dto) => (await _taskService.CreateTaskAsync(dto, Convert.ToInt32(User.FindFirst("customerId")?.Value))) is var result && result.Success ? Ok(new { message = result.Message, taskId = result.TaskId }) : StatusCode(500, new { message = result.Message });
 
         [HttpPut("{id}")]
         [EnableRateLimiting("WriteLimiter")]
         [Consumes("multipart/form-data")]
-        public async Task<IActionResult> UpdateTask(int id, [FromForm] TaskDto dto)
-        {
-            if (id != dto.TaskId)
-                return BadRequest("Task ID mismatch");
-
-            var result = await _taskService.UpdateTaskAsync(id, dto);
-
-            if (!result.Success)
-                return StatusCode(500, new { message = result.Message });
-
-            return Ok(new { message = result.Message });
-        }
-
-
+        public async Task<IActionResult> UpdateTask(int id, [FromForm] TaskDto dto) => id != dto.TaskId ? BadRequest("Task ID mismatch") : (await _taskService.UpdateTaskAsync(id, dto)) is var result && result.Success ? Ok(new { message = result.Message }) : StatusCode(500, new { message = result.Message });
+        
         [HttpDelete("{id}")]
         [EnableRateLimiting("WriteLimiter")]
-        public async Task<IActionResult> DeleteTask(int id)
-        {
-            var result = await _taskService.DeleteTaskAsync(id);
-
-            if (!result.Success)
-                return StatusCode(500, new { message = result.Message });
-
-            return Ok(new { message = result.Message });
-        }
+        public async Task<IActionResult> DeleteTask(int id) => await _taskService.DeleteTaskAsync(id) is var result && result.Success ? Ok(new { message = result.Message }) : StatusCode(500, new { message = result.Message });
 
         [HttpGet("statuses")]
         public async Task<ActionResult<IEnumerable<StatusDto>>> GetStatuses() => Ok(await _taskService.GetStatusesAsync());
 
         [HttpGet("application")]
-        public async Task<ActionResult<IEnumerable<ProjectsDto>>> GetProjectList()
-        {
-            var customerId = User.FindFirst("customerId")?.Value;
-            if (customerId == null) return NotFound();
-            var projects = await _taskService.GetProjectListAsync(customerId);
-            return Ok(projects);
-        }
-
+        public async Task<ActionResult<IEnumerable<ProjectsDto>>> GetProjectList() => User.FindFirst("customerId")?.Value is string customerId && !string.IsNullOrEmpty(customerId) ? Ok(await _taskService.GetProjectListAsync(customerId)) : NotFound();
+        
         [HttpGet("priority")]
-        public async Task<ActionResult<IEnumerable<PriorityDto>>> GetPriorityList()
-        {
-            var priorities = await _taskService.GetPriorityListAsync();   
-            return Ok(priorities);
-        }
-
+        public async Task<ActionResult<IEnumerable<PriorityDto>>> GetPriorityList() => Ok(await _taskService.GetPriorityListAsync());
+       
         [HttpGet("get_developers")]
-        public async Task<ActionResult<IEnumerable<DeveloperDto>>> GetDevelopers()
-        {
-            var customerId = User.FindFirst("customerId")?.Value;
-            if (customerId == null) return NotFound();
-            var developers = await _taskService.GetDevelopersAsync(customerId);
-            return Ok(developers);
-        }
+        public async Task<ActionResult<IEnumerable<DeveloperDto>>> GetDevelopers() => User.FindFirst("customerId")?.Value is string customerId && !string.IsNullOrEmpty(customerId) ? Ok(await _taskService.GetDevelopersAsync(customerId)) : NotFound();
 
         [HttpGet("get_taskCounts")]
-        public async Task<ActionResult<TaskCountsDto>> GetCounts()
-        {
-            var customerId = User.FindFirst("customerId")?.Value;
-            if (string.IsNullOrEmpty(customerId))
-                return Unauthorized("CustomerId not found in token.");
-
-            var counts = await _taskService.GetCountsAsync(customerId);
-            return Ok(counts);
-        }
-
+        public async Task<ActionResult<TaskCountsDto>> GetCounts() => User.FindFirst("customerId")?.Value is string customerId && !string.IsNullOrEmpty(customerId)
+        ? Ok(await _taskService.GetCountsAsync(customerId)) : Unauthorized("CustomerId not found in token.");
 
         [HttpGet("report")]
-        public async Task<ActionResult<IEnumerable<TasksReportDto>>> GetTasksReport([FromQuery] ReportFilters filters)
-        {
-            try
-            {
-                var result = await _taskService.GetTasksReportAsync(filters);
-                return Ok(result);
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(StatusCodes.Status500InternalServerError,
-                    new { message = "An error occurred while generating the report.", detail = ex.Message });
-            }
-        }
+        public async Task<ActionResult<IEnumerable<TasksReportDto>>> GetTasksReport([FromQuery] ReportFilters filters) => Ok(await _taskService.GetTasksReportAsync(filters));
+        
 
         [HttpGet("file/{id}")]
-        public async Task<ActionResult<TaskFileDto>> GetFileContent(int id)
-        {
-            var fileDto = await _taskService.GetFileContentAsync(id);
-            if (fileDto == null)
-                return NotFound();
-
-            return Ok(fileDto);
-        }
+        public async Task<ActionResult<TaskFileDto>> GetFileContent(int id) => await _taskService.GetFileContentAsync(id) is TaskFileDto file ? Ok(file) : NotFound();
 
         [HttpGet("get_allProjects")]
-        public async Task<IEnumerable<TblApplication>> GetAllProjectList()
-        {
-            return await _projectService.GetAllProjectsAsync();
-        }
+        public async Task<IEnumerable<TblApplication>> GetAllProjectList() => await _projectService.GetAllProjectsAsync();
 
         [HttpPost("createProject")]
-        public async Task<ActionResult<TblApplication>> CreateProject([FromBody] TblApplication app)
-        {
-            if (string.IsNullOrWhiteSpace(app.ChrApplicationName))
-                return BadRequest("Project name is required");
+        public async Task<ActionResult<TblApplication>> CreateProject([FromBody] TblApplication app) =>  app is null || string.IsNullOrEmpty(app.ChrApplicationName)
+        ? BadRequest("Project name is required") : CreatedAtAction(nameof(GetAllProjectList), new { id = (await _projectService.CreateProjectAsync(app, User.FindFirst("customerId")?.Value)).IntId }, await _projectService.CreateProjectAsync(app, User.FindFirst("customerId")?.Value));
 
-            var customerId = User.FindFirst("customerId")?.Value;
-            var created = await _projectService.CreateProjectAsync(app, customerId);
-
-            return CreatedAtAction(nameof(GetAllProjectList), new { id = created.IntId }, created);
-        }
 
         [HttpPut("updateProject/{id}")]
-        public async Task<IActionResult> UpdateProject(int id, [FromBody] TblApplication app)
-        {
-            var customerId = User.FindFirst("customerId")?.Value;
-            var updated = await _projectService.UpdateProjectAsync(id, app, customerId);
-
-            if (updated == null) return NotFound();
-            return Ok(updated);
-        }
+        public async Task<IActionResult> UpdateProject(int id, [FromBody] TblApplication app) => (await _projectService.UpdateProjectAsync(id, app, User.FindFirst("customerId")?.Value)) is TblApplication updated ? Ok(updated) : NotFound();
 
         [HttpDelete("deleteProject/{id}")]
-        public async Task<IActionResult> DeleteProject(int id)
-        {
-            var deleted = await _projectService.DeleteProjectAsync(id);
-            if (!deleted) return NotFound();
-
-            return Ok(new { message = "Project deleted successfully" });
-        }
+        public async Task<IActionResult> DeleteProject(int id) => await _projectService.DeleteProjectAsync(id) ? Ok(new { message = "Project deleted successfully" }) : NotFound();
 
         [HttpGet("employeeTaskStats")]
-        public async Task<ActionResult<IEnumerable<EmployeeTaskStatsDto>>> GetEmployeeTaskStats([FromQuery] string fromDate, [FromQuery] string toDate)
-        {
-            DateTime from = Convert.ToDateTime(fromDate);
-            DateTime to = Convert.ToDateTime(toDate);
-            var data = await _projectService.GetEmployeeTaskStatsAsync(from, to);
-            return Ok(data);
-        }
-
-
+        public async Task<ActionResult<IEnumerable<EmployeeTaskStatsDto>>> GetEmployeeTaskStats([FromQuery] string fromDate, [FromQuery] string toDate)  => Ok(await _projectService.GetEmployeeTaskStatsAsync(Convert.ToDateTime(fromDate),Convert.ToDateTime(toDate)));
     }
 }
