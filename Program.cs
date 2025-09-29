@@ -86,6 +86,7 @@ builder.Services.AddCors(options =>
     options.AddPolicy("AllowReactApp", policy =>
     {
         policy.WithOrigins("http://localhost:3000")
+
               .AllowAnyMethod()
               .AllowAnyHeader();
     });
@@ -155,7 +156,13 @@ builder.Services.AddSwaggerGen(options =>
 var app = builder.Build();
 
 app.UseMiddleware<NewExceptionMiddleware>();
+app.UseStaticFiles();
+app.UseCors("AllowReactApp");
+
 app.UseRateLimiter();
+app.UseAuthentication();
+app.UseAuthorization();
+
 app.UseSwagger();
 app.UseSwaggerUI(c =>
 {
@@ -164,12 +171,6 @@ app.UseSwaggerUI(c =>
 });
 
 app.UseHttpsRedirection();
-app.UseStaticFiles();
-
-app.UseCors("AllowReactApp");
-
-app.UseAuthentication(); 
-app.UseAuthorization();
 
 app.MapControllers();
 

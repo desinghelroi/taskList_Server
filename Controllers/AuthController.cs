@@ -8,12 +8,15 @@ namespace TaskList_Server.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
+    [ProducesResponseType(StatusCodes.Status200OK)]
     public class AuthController(IAuthService authService, Tasklist25Context context) : ControllerBase
     {
         private readonly IAuthService _authService = authService;
         private readonly Tasklist25Context _context = context;
 
         [HttpPost("login")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         public async Task<IActionResult> Login([FromBody] LoginRequest req)
         {
             var result = await _authService.LoginAsync(req);
@@ -24,21 +27,32 @@ namespace TaskList_Server.Controllers
         }
 
         [HttpPost("register")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
         public async Task<IActionResult> Register([FromBody] RegisterRequest req) => await _authService.RegisterAsync(req) is var result && result.Success ? Ok(new { message = result.Message }) : BadRequest(new { message = result.Message });
 
         [HttpGet("all")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
         public async Task<IActionResult> GetAllPermissions() => Ok(await _authService.GetAllPermissionsAsync());
 
         [HttpGet("get_AllUsers")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
         public async Task<IActionResult> GetAllUsers() => Ok(await _authService.getAllUsers());
 
         [HttpGet("get_userById/{id}")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<ActionResult<User>> GetUserById(int id) => await _context.Users.FindAsync(id) is var user && user is not null ? Ok(user) : NotFound();
+
         [HttpDelete("deleteusers/{id}")]
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<ActionResult> DeleteUser(int id) => await _context.Users.FindAsync(id) is var user && user is not null ? (_context.Users.Remove(user), await _context.SaveChangesAsync(), NoContent()).Item3 : NotFound();
 
 
         [HttpPut("updateusers/{id}")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<ActionResult<User>> UpdateUser(int id, [FromBody] User user)
         {
             if (id != user.UserId)
@@ -63,6 +77,8 @@ namespace TaskList_Server.Controllers
         }
 
         [HttpPost("createusers")]
+        [ProducesResponseType(StatusCodes.Status201Created)]        
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<ActionResult<User>> CreateUser([FromBody] User user)
         {
             if (user == null)
